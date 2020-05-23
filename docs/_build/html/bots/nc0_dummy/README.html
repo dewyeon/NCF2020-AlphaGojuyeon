@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>예제 0. Dummy &#8212; sc2minigame  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/translations.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="색인" href="../../genindex.html" />
+    <link rel="search" title="검색" href="../../search.html" />
+    <link rel="next" title="예제 1. Simple" href="../nc1_simple/README.html" />
+    <link rel="prev" title="시스템 구조 및 게임 규칙" href="../../docs/intro.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="dummy">
+<h1>예제 0. Dummy<a class="headerlink" href="#dummy" title="제목 주소">¶</a></h1>
+<p>python-sc2의 sc2.BotAI 클래스를 상속한 뒤,
+__init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현한다.</p>
+<p>Dummy는 AI를 구현한 가장 간단한 예(아무 것도 하지 않음)를 보여준다.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Bot</span><span class="p">(</span><span class="n">sc2</span><span class="o">.</span><span class="n">BotAI</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    아무것도 하지 않는 봇 예제</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param int iteration: 이번이 몇 번째 스텝인지를 인자로 넘겨 줌</span>
+
+<span class="sd">        매 스텝마다 호출되는 함수</span>
+<span class="sd">        주요 AI 로직은 여기에 구현</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># 유닛 들이 수행할 액션은 리스트 형태로 만들어서,</span>
+        <span class="c1"># do_actions 함수에 인자로 전달하면 게임에서 실행된다.</span>
+        <span class="c1"># do_action 보다, do_actions로 여러 액션을 동시에 전달하는 </span>
+        <span class="c1"># 것이 훨씬 빠르다.</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_actions</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>AI를 구현할 때는 Dummy와 마찬가지로 sc2.BotAI 클래스를 상속한 객체를
+만들면서 시작한다.</p>
+<p>추가로 경진대회의 운영 편의상 AI 객체의 이름은 Bot으로 하고, 파일 이름은 bot.py,
+해당 AI와 관련된 모든 파일은 bots 폴더의 서브폴더에 저장한다.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/NC CI_window to the future-navy gradient.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../../docs/intro.html" title="이전 장">시스템 구조 및 게임 규칙</a></li>
+      <li>Next: <a href="../nc1_simple/README.html" title="다음 장">예제 1. Simple</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>현재 문서</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/bots/nc0_dummy/README.rst.txt"
+            rel="nofollow">소스 코드를 보려면</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>빠른 검색</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="바로 가기" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Game AI Lab, NCSOFT.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../../_sources/bots/nc0_dummy/README.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

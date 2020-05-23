@@ -1,0 +1,175 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>sc2minigame 튜토리얼 &#8212; sc2minigame  documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="색인" href="genindex.html" />
+    <link rel="search" title="검색" href="search.html" />
+    <link rel="next" title="빠른 시작" href="README.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="sc2minigame">
+<h1>sc2minigame 튜토리얼<a class="headerlink" href="#sc2minigame" title="제목 주소">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">주석</p>
+<ul class="last simple">
+<li>현재 이 문서는 2020년 NCFellowship을 위해 준비된 플랫폼과 경진대회에 대한
+내용을 포함하고 있음</li>
+<li>플랫폼은 Blizzard™의 StarCraft 2 <a class="footnote-reference" href="#sc2" id="id1">[1]</a>, s2client-api <a class="footnote-reference" href="#sc2api" id="id2">[2]</a>
+그리고 Hannes Karppila의 python-sc2 <a class="footnote-reference" href="#python-sc2" id="id3">[3]</a> 를 기반으로 하고 있음</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">빠른 시작</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="README.html#id2">소개</a></li>
+<li class="toctree-l2"><a class="reference internal" href="README.html#id6">설치</a></li>
+<li class="toctree-l2"><a class="reference internal" href="README.html#id7">게임 실행</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/intro.html">시스템 구조 및 게임 규칙</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/intro.html#id2">시스템 구조</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/intro.html#id3">게임 규칙</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bots/nc0_dummy/README.html">예제 0. Dummy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bots/nc1_simple/README.html">예제 1. Simple</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bots/nc3/README.html">예제 3. Simple</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#bots-nc-example-v3-push-bot-module">bots.nc_example_v3.push_bot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#module-bots.nc_example_v3">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bots/nc3/README.html">예제 4. Simple PPO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#bots-nc-example-v3-push-bot-module">bots.nc_example_v3.push_bot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots/nc3/README.html#module-bots.nc_example_v3">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="제목 주소">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">색인</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">모듈 목록</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">검색 페이지</span></a></li>
+</ul>
+<p class="rubric">Footnotes</p>
+<table class="docutils footnote" frame="void" id="sc2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>StarCraft는 미국 및 다른 국가에서 Blizzard Entertainment Inc. 의 상표 또는 등록상표 입니다.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="sc2api" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td><a class="reference external" href="https://github.com/Blizzard/s2client-api">https://github.com/Blizzard/s2client-api</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="python-sc2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td><a class="reference external" href="https://github.com/Dentosal/python-sc2">https://github.com/Dentosal/python-sc2</a></td></tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="#">
+              <img class="logo" src="_static/NC CI_window to the future-navy gradient.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="#">목차</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">sc2minigame 튜토리얼</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="README.html" title="다음 장">빠른 시작</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>현재 문서</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">소스 코드를 보려면</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>빠른 검색</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="바로 가기" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Game AI Lab, NCSOFT.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
