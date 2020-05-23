@@ -1,4 +1,7 @@
 .vscode/*
 /__backup__/*
+/__expr__/*
+/__bots__/*
+__pycache__
 *.pyc
 /runs/*

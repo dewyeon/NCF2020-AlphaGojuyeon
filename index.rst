@@ -10,8 +10,11 @@ sc2minigame 튜토리얼
      그리고 Hannes Karppila의 python-sc2 [#python-sc2]_ 를 기반으로 하고 있음
 
 
+설치 및 기본 예제
+-----------------
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    빠른 시작 <README.rst>
    시스템 구조 및 게임 규칙 <docs/intro.rst>
@@ -19,6 +22,14 @@ sc2minigame 튜토리얼
    예제 1. Simple <bots/nc1_simple/README.rst>
    예제 2. Simple <bots/nc2_simple_2/README.rst>
    예제 3. Simple <bots/nc3/README.rst>
+
+
+고급 예제
+-----------------
+
+.. toctree::
+   :maxdepth: 1
+
    예제 4. Simple PPO <bots/nc3/README.rst>
 
 
@@ -35,8 +46,8 @@ sc2minigame 튜토리얼
 ..    sc2_utils
 
 
-Indices and tables
-==================
+인덱스
+------
 
 * :ref:`genindex`
 * :ref:`modindex`
