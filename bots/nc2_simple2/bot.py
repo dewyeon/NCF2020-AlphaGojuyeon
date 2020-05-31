@@ -13,7 +13,7 @@ from sc2.ids.buff_id import BuffId
 
 class Bot(sc2.BotAI):
     """
-    example v1과 유사하지만, 빌드 오더 대신, 유닛 비율을 맞추도록 유닛을 생산함
+    빌드 오더 대신, 유닛 비율을 맞추도록 유닛을 생산함
     """
     def __init__(self, *args, **kwargs):
         super().__init__()
