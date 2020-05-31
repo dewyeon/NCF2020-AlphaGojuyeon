@@ -22,6 +22,8 @@ sc2minigame 튜토리얼
    예제 1. Simple: 간단한 build-order <bots/nc1_simple/README.rst>
    예제 2. Simple 2: 적응형 build-order <bots/nc2_simple2/README.rst>
    예제 3. Simple 3: 집결지 <bots/nc3_simple3/README.rst>
+   예제 4. Simple PPO: 분산학습 예 <bots/nc4_simple_ppo/README.rst>
+   토너먼트 시스템 및 제출 방식
 
 
 고급 예제
@@ -30,9 +32,9 @@ sc2minigame 튜토리얼
 .. toctree::
    :maxdepth: 1
 
-   예제 4. Simple PPO: 분산학습 예 <bots/nc4_simple_ppo/README.rst>
-   예제 5. Simple PPO: Map feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
-   예제 6. Simple PPO: Unit feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
+   예제 5. Map feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
+   예제 6. Unit feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
+   예제 7. ...
 
 
 
