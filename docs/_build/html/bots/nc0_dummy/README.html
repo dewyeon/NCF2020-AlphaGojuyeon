@@ -36,9 +36,9 @@
             
   <div class="section" id="dummy">
 <h1>예제 0. Dummy<a class="headerlink" href="#dummy" title="제목 주소">¶</a></h1>
-<p>python-sc2의 sc2.BotAI 클래스를 상속한 뒤,
-__init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현한다.</p>
-<p>Dummy는 AI를 구현한 가장 간단한 예(아무 것도 하지 않음)를 보여준다.</p>
+<p>Dummy는 AI를 구현한 가장 간단한 예(아무 것도 하지 않는 AI)를 보여준다.</p>
+<p>python-sc2에 AI를 구현할 때는, python-sc2의 sc2.BotAI 클래스를 상속한 뒤,
+__init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현하면 된다.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Bot</span><span class="p">(</span><span class="n">sc2</span><span class="o">.</span><span class="n">BotAI</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    아무것도 하지 않는 봇 예제</span>
@@ -54,7 +54,7 @@ __init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현한다.
 <span class="sd">        주요 AI 로직은 여기에 구현</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="c1"># 유닛 들이 수행할 액션은 리스트 형태로 만들어서,</span>
+        <span class="c1"># 유닛들이 수행할 액션은 리스트 형태로 만들어서,</span>
         <span class="c1"># do_actions 함수에 인자로 전달하면 게임에서 실행된다.</span>
         <span class="c1"># do_action 보다, do_actions로 여러 액션을 동시에 전달하는 </span>
         <span class="c1"># 것이 훨씬 빠르다.</span>
@@ -62,10 +62,10 @@ __init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현한다.
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_actions</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>AI를 구현할 때는 Dummy와 마찬가지로 sc2.BotAI 클래스를 상속한 객체를
-만들면서 시작한다.</p>
 <p>추가로 경진대회의 운영 편의상 AI 객체의 이름은 Bot으로 하고, 파일 이름은 bot.py,
 해당 AI와 관련된 모든 파일은 bots 폴더의 서브폴더에 저장한다.</p>
+<p>예를 들어 내가 제출하는 봇의 이름이 My Bot 이라면, 관련된 코드 및 데이터를 bots/my_bot
+폴더에 저장하고, BoatAI 클래스를 상속한 클래스는 bots/my_bot/bot.py 파일에 Bot 으로 한다.</p>
 </div>
 
 
@@ -89,16 +89,14 @@ __init__, on_step 등의 메소드를 오버라이딩해서 봇을 구현한다.
 
 <h3>탐색</h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../README.html">빠른 시작</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">시작하기</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../docs/intro.html">시스템 구조 및 게임 규칙</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">예제 0. Dummy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../nc1_simple/README.html">예제 1. Simple: 간단한 build-order 봇</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../nc2_simple2/README.html">예제 2. Simple 2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../nc3_simple3/README.html">예제 3. Simple 3</a></li>
-</ul>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../nc4_simple_ppo/README.html">예제 4. Simple PPO</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../nc4_simple_ppo/README.html">예제 5. Simple PPO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nc1_simple/README.html">예제 1. Simple: 간단한 build-order</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nc2_simple2/README.html">예제 2. Simple 2: 적응형 build-order</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nc3_simple3/README.html">예제 3. Simple 3: 집결지</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nc4_simple_ppo/README.html">예제 4. Simple PPO: 분산학습 예</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../evaluator/README.html">토너먼트 시스템 및 제출 방식</a></li>
 </ul>
 
 <div class="relations">

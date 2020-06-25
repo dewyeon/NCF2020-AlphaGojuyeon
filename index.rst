@@ -11,30 +11,33 @@ sc2minigame 튜토리얼
 
 
 환경설정 및 기본 예제
---------------------
+----------------------
+
+여기서는 이 플랫폼과 경진대회 환경에 대한 소개를 하고, 기본적인 AI 구현 예제를 소개한다.
+마지막에는 구현한 AI를 제출하는 방법에 대해 설명한다.
 
 .. toctree::
    :maxdepth: 1
 
-   빠른 시작 <README.rst>
+   시작하기 <README.rst>
    시스템 구조 및 게임 규칙 <docs/intro.rst>
    예제 0. Dummy <bots/nc0_dummy/README.rst>
    예제 1. Simple: 간단한 build-order <bots/nc1_simple/README.rst>
    예제 2. Simple 2: 적응형 build-order <bots/nc2_simple2/README.rst>
    예제 3. Simple 3: 집결지 <bots/nc3_simple3/README.rst>
    예제 4. Simple PPO: 분산학습 예 <bots/nc4_simple_ppo/README.rst>
-   토너먼트 시스템 및 제출 방식
+   토너먼트 시스템 및 제출 방식 <evaluator/README.rst>
 
 
-고급 예제
------------------
+.. 고급 예제
+.. -----------------
 
-.. toctree::
-   :maxdepth: 1
+.. .. toctree::
+..    :maxdepth: 1
 
-   예제 5. Map feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
-   예제 6. Unit feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
-   예제 7. ...
+..    예제 5. Map feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
+..    예제 6. Unit feature 처리 추가 <bots/nc4_simple_ppo/README.rst>
+..    예제 7. ...
 
 
 
