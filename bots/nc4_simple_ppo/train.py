@@ -138,7 +138,7 @@ class Trainer:
         self.writer = SummaryWriter()
         self.scores = deque(maxlen=250)
         self.saved_model_score = -1e10
-        self.raw_scores = deque(maxlen=5000)
+        self._scores = deque(maxlen=5000)
         self.n_errors = 0
 
         self.env = Environment(args)
@@ -202,7 +202,7 @@ class Trainer:
             if done:
                 # 승패 기록
                 self.scores.append(reward)
-                self.raw_scores.append((self.frames, reward))
+                self._scores.append((self.frames, np.mean(self.scores)))
                 if len(self.scores) >= self.scores.maxlen:
                     mean_score = np.mean(self.scores)
                     self.writer.add_scalar('perf/score', mean_score, self.frames)
@@ -353,7 +353,7 @@ class Trainer:
         self.writer.add_scalar(f'info/memory_used_percent', memory_usage_dict['percent'])
         self.writer.add_scalar(f'info/memory_used_gb', get_memory_usage())
         self.writer.add_scalar(f'info/memory_usage_delta', get_memory_usage_delta())
-        print(plotille.scatter(*zip(*self.raw_scores)))
+        print(plotille.scatter(*zip(*self._scores)))
         text = [
             f'step: {self.frames}',
             f'score: {np.mean(self.scores):.3f}',
