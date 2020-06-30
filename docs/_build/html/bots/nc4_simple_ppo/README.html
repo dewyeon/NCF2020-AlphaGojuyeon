@@ -4,7 +4,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>bots.nc_example_v4 package &#8212; sc2minigame  문서</title>
+    <title>예제 4. Simple PPO &#8212; sc2minigame  문서</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -13,11 +13,10 @@
     <script src="../../_static/doctools.js"></script>
     <script src="../../_static/language_data.js"></script>
     <script src="../../_static/translations.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="색인" href="../../genindex.html" />
     <link rel="search" title="검색" href="../../search.html" />
     <link rel="next" title="평가" href="../../evaluator/README.html" />
-    <link rel="prev" title="bots.nc_example_v3 package" href="../nc3_simple3/README.html" />
+    <link rel="prev" title="예제 3. Simple3" href="../nc3_simple3/README.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -34,16 +33,36 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="bots-nc-example-v4-package">
-<h1>bots.nc_example_v4 package<a class="headerlink" href="#bots-nc-example-v4-package" title="제목 주소">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="제목 주소">¶</a></h2>
+  <div class="section" id="simple-ppo">
+<h1>예제 4. Simple PPO<a class="headerlink" href="#simple-ppo" title="제목 주소">¶</a></h1>
+<p>sc2minigame에서 가장 중요한 의사결정 사항 두 가지는 다음에 어떤 유닛을 생산해야하는지, 언제 공격해야 하는지 두 가지 이다.
+Simple, Simple2, 그리고 Simple3는 이 두 가지 문제를 해결할 수 있는 간단한 AI를 구현한 예이다.
+Simple3는 Simple이나 Simple2에 비해 성능이 향상되었지만, 규칙을 수정해서 성능을 향상시킬 수 있는 여지가 충분히 있다.
+유닛의 생산 비율을 조정하거나, 공격시점을 결정하는 규칙을 수정하는 것만으로도 승률을 높일 수 있다.
+그러나, 규칙을 수정하고 평가하는 과정을 반복하는 것은 매우 번거로운 작업이고
+일정 수준이상의 성능에 도달하기 위해서는 보다 체계적이고 자동화된 방법이 필요하다.
+Simple PPO는 공격시점을 결정하는 규칙을 강화학습(RL, Reinforcement Learning) 알고리즘 중 하나인
+PPO (Proximal Policy Optimization)를 사용해 개선하는 예를 보여준다.</p>
+<div class="section" id="id1">
+<h2>학습 실행<a class="headerlink" href="#id1" title="제목 주소">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Trainer 실행</span>
+<span class="o">(</span>sc2<span class="o">)</span> ~/NCF2020 $ python -m python -m bots.nc4_simple_ppo.train
+</pre></div>
 </div>
-<div class="section" id="bots-nc-example-v4-army-bot-module">
-<h2>bots.nc_example_v4.army_bot module<a class="headerlink" href="#bots-nc-example-v4-army-bot-module" title="제목 주소">¶</a></h2>
+<p>학습 코드를 실행하려면 우선 Traniner process를 실행시킨다.
+Trainer가 성공적으로 실행되면 《READY》 메시지가 출력된 채로 대기 한다.
+Traniner는 학습 알고리즘을 실행하기만 하고, 게임을 플레이해서 데이터를 생성하지 않는다.
+게임을 플레이해서 데이터를 생성하는 역할을하는 Actor process를 추가로 실행해야 한다.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Actor 실행</span>
+<span class="o">(</span>sc2<span class="o">)</span> ~/NCF2020 $ python -m python -m bots.nc4_simple_ppo.train --attach<span class="o">={</span>trainer-ip<span class="o">}</span> --n_actors<span class="o">=</span><span class="m">2</span>
+</pre></div>
 </div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="제목 주소">¶</a></h2>
+<p>Actor는 Trainer와 비슷하게 실행하지만, Actor가 접속할 Trainer의 IP 주소를 argument로 같이 입력하면,
+Actor모드로 실행된다.
+여러 Actor가 한 Trainer에 접속해서 학습을 수행할 수 있고, 많은 Actor가 접속할 수록 학습 속도를 향상시킬 수 있다.
+실질적으로는 학습에 참가한 PC 사양에 따라 네트워크(LAN), CPU, GPU등에서 심각한 병목이 발생하여
+무한히 학습 속도를 향상시키는 것은 어렵지만, 일반적인 데스크톱 PC에서는 PC 10대 정도 까지는 문제없이 성능이 향상된다.</p>
+<p>tensorboard 출력결과는 runs 폴더에 저장되고, 학습한 인공신경망 모델은 bots/nc4_simple_ppo/model.pt 파일로 저장된다.</p>
 </div>
 </div>
 
@@ -82,7 +101,7 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../nc3_simple3/README.html" title="이전 장">bots.nc_example_v3 package</a></li>
+      <li>Previous: <a href="../nc3_simple3/README.html" title="이전 장">예제 3. Simple3</a></li>
       <li>Next: <a href="../../evaluator/README.html" title="다음 장">평가</a></li>
   </ul></li>
 </ul>

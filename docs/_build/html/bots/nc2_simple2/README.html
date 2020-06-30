@@ -4,7 +4,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>bots.nc_example_v2 package &#8212; sc2minigame  문서</title>
+    <title>예제 2. Simple2 &#8212; sc2minigame  문서</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -34,17 +34,42 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="bots-nc-example-v2-package">
-<h1>bots.nc_example_v2 package<a class="headerlink" href="#bots-nc-example-v2-package" title="제목 주소">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="제목 주소">¶</a></h2>
+  <div class="section" id="simple2">
+<h1>예제 2. Simple2<a class="headerlink" href="#simple2" title="제목 주소">¶</a></h1>
+<p>Simple은 현재 보유한 유닛들과 관계없이 해병 5, 의료선 1를 순서대로 생산한다.
+게임 초반에는 의도한 대로 유닛 구성을 할 수 있지만, 전투가 벌어진 초반 이후에는 의도대로 유닛 구성을 하기 어렵다.
+예를들어, 이미 의료선이 충분히 있더라도, 해병 5을 생산한 뒤에는
+의료선을 생산해야만하기 때문에 원래 의도와는 다른 유닛 구성을 가지게 된다.</p>
+<p>Simple2는 사전에 정의된 목표 유닛 구성 비율을, 현재 유닛 구성과 비교하여, 부족한 유닛을 차례대로 생산한다.
+따라서, 현재 유닛의 숫자나 비율에 관계없이 의도한 유닛 비율을 달성할 수 있는 빌드 오더를 생성할 수 있다.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>        <span class="bp">self</span><span class="o">.</span><span class="n">target_unit_counts</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">UnitTypeId</span><span class="o">.</span><span class="n">COMMANDCENTER</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># 추가 사령부 생산 없음</span>
+            <span class="n">UnitTypeId</span><span class="o">.</span><span class="n">MARINE</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="n">UnitTypeId</span><span class="o">.</span><span class="n">MARAUDER</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">UnitTypeId</span><span class="o">.</span><span class="n">MEDIVAC</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">}</span>
+</pre></div>
 </div>
-<div class="section" id="bots-nc-example-v2-simple-combat-bot-module">
-<h2>bots.nc_example_v2.simple_combat_bot module<a class="headerlink" href="#bots-nc-example-v2-simple-combat-bot-module" title="제목 주소">¶</a></h2>
+<p>Simple2는 해병, 불곰, 의료선을 각각 5, 2, 1로 비율로 생산하는 것을 목표로 한다.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>        <span class="c1"># 부족한 유닛 숫자 계산</span>
+        <span class="n">unit_counts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">:</span>
+            <span class="n">unit_counts</span><span class="p">[</span><span class="n">unit</span><span class="o">.</span><span class="n">type_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">type_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        
+        <span class="n">target_unit_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_unit_counts</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">target_unit_ratio</span> <span class="o">=</span> <span class="n">target_unit_counts</span> <span class="o">/</span> <span class="p">(</span><span class="n">target_unit_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>  <span class="c1"># 목표로 하는 유닛 비율</span>
+        <span class="n">current_unit_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">unit_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tid</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">tid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_unit_counts</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>
+        <span class="n">current_unit_ratio</span> <span class="o">=</span> <span class="n">current_unit_counts</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_unit_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>  <span class="c1"># 현재 유닛 비율</span>
+        <span class="n">unit_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">target_unit_ratio</span> <span class="o">-</span> <span class="n">current_unit_ratio</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># 목표 - 현재 유닛 비율</span>
+</pre></div>
 </div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="제목 주소">¶</a></h2>
+<p>목표 유닛의 비율과 현재 유닛의 비율 구한 뒤, 그 차이를 구한다.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>            <span class="n">next_unit</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_unit_counts</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="n">unit_ratio</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]</span>  <span class="c1"># 가장 부족한 유닛을 다음에 훈련</span>
+</pre></div>
 </div>
+<p>차이가 가장 큰 유닛이 현재 가장 부족한 유닛이기 때문에, 다음에 생산할 유닛으로 결정한다.</p>
+<p>목표 비율과 현재 비율의 차이가 동일할 때 어떤 유닛을 먼저 생산할 지 문제를 아직 해결하지 않았지만,
+고정된 빌드오더에 비해면 유연하게 상황변화(현재 유닛 비율의 변화)에 대응할 수 있다.</p>
 </div>
 
 

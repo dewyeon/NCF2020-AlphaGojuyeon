@@ -73,6 +73,7 @@ anaconda 가상환경을 만들고, 필요한 모듈을 설치한다.
    (sc2) $ # conda install pytorch torchvision cudatoolkit=10.2 -c pytorch  # gpu 버전
    (sc2) $ pip install nest_asyncio
    (sc2) $ pip install s2clientprotocol
+   (sc2) $ pip install plotille
    
 **StarCraft 2 설치**
 

@@ -68,22 +68,6 @@ system_log_file = out_dir / 'system.log'
 
 
 teams = dict(
-    npc='bots.npc.bot.Bot',
-    abs_taebo='bots.abs_taebo.bot.Bot',
-    kinai='bots.KINAI.bot.Bot',
-    ho='bots.ho.bot.Bot',
-    blue_bird='bots.bluebird.bot.Bot',
-    transfer='bots.transfer.bot.Bot',
-    maru='bots.Maru.bot.Bot',
-    
-    keai='bots.keai.keai_bot.KeaiBot',
     drop_bot='bots.__examples__.nc_example_v6.drop_bot.DropBot',
-    poscat='bots.poscat.poscat_bot.POSCATBot',
-    big='bots.big.bot.Bot',
-
-    # kinai='bots.kinai.kinai_bot.KinaiBot',
-    # test_bot='bots.__examples__.nc_example_v6.drop_bot.DropBot',
-    # rush_bot='bots.__examples__.nc_example_v1.rush_bot.RushBot',
-    # ggg='bots.ggg.KeyBot.KeyBot', # -> ho
-    # showing_bot='bots.Showing_bot.speedBot.MarinBot', # -> abs_taebo
+    drop_bot2='bots.__examples__.nc_example_v6.drop_bot.DropBot',
 )

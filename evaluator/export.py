@@ -215,10 +215,6 @@ def evals(args, test):
         summary.to_excel(out_dir / 'TEST_summary.xlsx', sheet_name='Sheet1')
     else:
         summary.to_excel(out_dir / 'summary.xlsx', sheet_name='Sheet1')
-    # embed(); exit()
-    # trouble_case = df[df['win'] == 0.5]
-    # print(trouble_case)
-
 
 if __name__ == '__main__':
 
