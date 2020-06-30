@@ -1,3 +1,4 @@
+.gitignore
 .vscode/*
 /__backup__/*
 /__expr__/*
