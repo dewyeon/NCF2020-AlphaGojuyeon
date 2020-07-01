@@ -138,7 +138,7 @@ class Trainer:
         self.writer = SummaryWriter()
         self.scores = deque(maxlen=250)
         self.saved_model_score = -1e10
-        self._scores = deque(maxlen=5000)
+        self._scores = deque(maxlen=10000)
         self.n_errors = 0
 
         self.env = Environment(args)
