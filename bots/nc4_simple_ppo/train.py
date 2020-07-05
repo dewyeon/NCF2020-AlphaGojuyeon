@@ -44,8 +44,8 @@ from .bot import Model
 from .consts import CommandType
 from .consts import ArmyStrategy, EconomyStrategy, Sample
 from .consts import MessageType
-from toolbox.utils import keyboard, backup_dir, get_memory_usage, get_memory_usage_delta, kill_children_processes
-from toolbox.utils.ascii_plot import draw_line, draw_sparkline
+from sc2_utils import keyboard, backup_dir, get_memory_usage, get_memory_usage_delta, kill_children_processes
+from sc2_utils.ascii_plot import draw_sparkline
 
 
 def parse_arguments():
@@ -353,7 +353,7 @@ class Trainer:
         self.writer.add_scalar(f'info/memory_used_percent', memory_usage_dict['percent'])
         self.writer.add_scalar(f'info/memory_used_gb', get_memory_usage())
         self.writer.add_scalar(f'info/memory_usage_delta', get_memory_usage_delta())
-        print(plotille.scatter(*zip(*self._scores)))
+        print(plotille.scatter(*zip(*self._scores), height=30, X_label='Frames', Y_label='Score', y_min=-1.0, y_max=1.0))
         text = [
             f'step: {self.frames}',
             f'score: {np.mean(self.scores):.3f}',

@@ -17,8 +17,6 @@ from sc2.data import Result
 from sc2.player import Bot, Computer
 from tqdm import trange
 
-from toolbox.init.argparse import parse_bool
-
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.DEBUG)
 
