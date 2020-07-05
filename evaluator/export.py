@@ -33,8 +33,6 @@ def evals(args, test):
         else:
             print('게임 결과가 없음')
 
-    # embed(); exit()
-
     with open(csv_file, 'rt') as f:
         lines = f.readlines()
         lines = [line.strip() for line in lines]

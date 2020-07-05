@@ -1,12 +1,15 @@
 
 import argparse
+import csv
 from datetime import datetime
 from pathlib import Path
-from IPython import embed
-from toolbox.init.argparse import parse_bool
 
+from IPython import embed
+
+from sc2_utils import parse_bool
 
 parser = argparse.ArgumentParser('NC Fellowship 2019-sc2minigame-run_game')
+parser.add_argument('--root_path', type=str, default='eval_example')
 parser.add_argument('--cont', action='store_true', default=False)
 parser.add_argument('--tournament',
                     type=parse_bool,
@@ -54,7 +57,7 @@ args = parser.parse_args()
 
 current = datetime.now().isoformat().replace(':', '-').split('.')[0]
 
-root_dir = Path(f'./outs')
+root_dir = Path(args.root_path)
 out_dir = root_dir / f'{current}'
 if args.cont:
     dirs = [l for l in root_dir.glob('*') if l.is_dir()]
@@ -66,8 +69,14 @@ csv_file = out_dir / 'result.csv'
 replay_dir = out_dir / 'replays'
 system_log_file = out_dir / 'system.log'
 
+# bot 저장소 목록 읽기
+with (root_dir / 'config.csv').open() as f:
+    reader = csv.reader(f)
+    repos = [(name, repo) for name, repo in reader]
+    names_, repos_ = zip(*repos)
+    assert len(names_) == len(set(names_)), "중복된 bot 이름이 있음"
+    assert len(repos_) == len(set(repos_)), "중복된 저장소가 이름이 있음"
+    repos = {name: repo for name, repo in repos}
+    
+teams = {name: f'{root_dir}.{name}.bot.Bot' for name in repos.keys()}
 
-teams = dict(
-    drop_bot='bots.__examples__.nc_example_v6.drop_bot.DropBot',
-    drop_bot2='bots.__examples__.nc_example_v6.drop_bot.DropBot',
-)
