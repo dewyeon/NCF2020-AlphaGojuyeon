@@ -39,6 +39,13 @@ def parse_race(race):
     else:
         return Race.Random
 
+        
+def parse_bool(value):
+    if value in ('1', 'true', 'True'):
+        return True
+    else:
+        return False
+
 
 def kill_children_processes(pid=None, including_parent=False):
     """

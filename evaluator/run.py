@@ -3,17 +3,18 @@
 __author__ = '박현수(hspark8312@ncsoft.com), NSSOFT Game AI Lab'
 
 
-import argparse
 import datetime
 import importlib
 import logging
 import multiprocessing as mp
 import os
-import sys
-import shlex
-import subprocess
-import time
 import platform
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
 
 import numpy as np
 import sc2
@@ -21,6 +22,7 @@ from IPython import embed
 from sc2 import Difficulty, Race, maps
 from sc2.data import Result
 from sc2.player import Bot, Computer
+from termcolor import cprint
 from tqdm import tqdm, trange
 
 from . import config
@@ -34,7 +36,7 @@ def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path
     # TODO: 시간초과 검사
     # TODO: 예외처리
     # TODO: 시간측정
-    cmd = f'python -m tournament.run --tournament=False --bot1={bot1} --bot2={bot2} --map_name={map_name} --realtime={realtime}'
+    cmd = f'python -m evaluator.run --tournament=False --bot1={bot1} --bot2={bot2} --map_name={map_name} --realtime={realtime}'
     if replay_path is not None:
          cmd += f' --replay_path={replay_path}'
 
@@ -124,13 +126,38 @@ def play_game(bot1, bot2, map_name, realtime, replay_path):
     return result
 
 
+def update_bot(config):
+    result = dict()
+    for name in config.repos:
+        repo = config.repos[name]
+        target = config.root_dir / 'bots' / name
+        if target.exists():
+            # pull bots
+            cmd = f'git pull'
+            result[name] = subprocess.call(shlex.split(cmd), cwd=target)
+        else:
+            # clone bots
+            cmd = f'git clone {repo} {target}'
+            result[name] = subprocess.call(shlex.split(cmd))
+    return result
+
 if __name__ == '__main__':
+
+    cprint(f'평가 DIR: {config.root_dir}', 'green')
+
+    result = update_bot(config)
+    for name, ret in result.items():
+        if ret == 0:
+            cprint(f'{name} 업데이트 성공', 'green')
+        else:
+            cprint(f'{name} 업데이트 실패', 'red')
+
+    embed(); exit()
 
     if args.csv_file is None:
         args.csv_file = config.csv_file
 
     if args.tournament:
-
         # config.out_dir.mkdir(exist_ok=True)
         config.replay_dir.mkdir(exist_ok=True, parents=True)
 
