@@ -192,10 +192,16 @@ def export(config):
     #
     # 전이 그래프
     #
+    p1_win_raito = total_count / (total_count + total_count.T) * win_count / total_count
+    p2_win_ratio = total_count.T / (total_count + total_count.T) * (1 - (win_count.T / total_count.T))
+    total_win_raito = p1_win_raito + p2_win_ratio
+
+    error_count.columns = [c[1] for c in error_count.columns]
+
     if config.args.alpha is None:
-        C, pi, ranks = get_ranks(win_ratio, use_inf_alpha=True, inf_alpha_eps=0.01)
+        C, pi, ranks = get_ranks(total_win_raito, use_inf_alpha=True, inf_alpha_eps=0.01)
     else:
-        C, pi, ranks = get_ranks(win_ratio, alpha=config.args.alpha)
+        C, pi, ranks = get_ranks(total_win_raito, alpha=config.args.alpha)
     draw_response_graph(config, names, C, pi, ranks)
 
 
