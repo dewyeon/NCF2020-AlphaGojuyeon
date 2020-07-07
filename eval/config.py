@@ -13,6 +13,7 @@ from sc2_utils import parse_bool
 parser = argparse.ArgumentParser('NC Fellowship 2020-eval')
 # 평가 정보가 저장된 경로
 parser.add_argument('--root_path', type=str, default='eval_example')
+parser.add_argument('--current', type=str)
 # 작업 목록
 parser.add_argument('--update_bots', type=lambda x: x in ('True', 'true', '1'), default=True)
 parser.add_argument('--play_games', type=lambda x: x in ('True', 'true', '1'), default=True)
@@ -25,10 +26,14 @@ parser.add_argument('--map_name', type=str, default='NCF-2020-v4')
 parser.add_argument('--timeout', type=int, default=1800)
 parser.add_argument('--save_replay', type=lambda x: x in ('True', 'true', '1'), default=True)
 parser.add_argument('--replay_path', type=str, default=None)
+parser.add_argument('--alpha', type=float, default=None)
 args = parser.parse_args()
 
 # 현재 시간
-current = datetime.now().isoformat().replace(':', '-').split('.')[0]
+if args.current is None:
+    current = datetime.now().isoformat().replace(':', '-').split('.')[0]
+else:
+    current = args.current
 
 # 평가용 봇과 결과가 저장되는 폴더
 root_dir = Path(args.root_path)
