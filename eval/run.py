@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     if args.export_results:
         cprint(f'* 결과 분석 및 출력')
-        eval.export(config)
+        export(config)
 
     if args.publish_results:
         cprint(f'* 토너먼트 결과 공개')
