@@ -24,6 +24,7 @@ from termcolor import cprint
 from tqdm import tqdm, trange
 
 from eval.play_game import run_play_game
+from eval.export import export
 
 from . import config
 from .config import args
@@ -135,7 +136,7 @@ if __name__ == '__main__':
 
     if args.export_results:
         cprint(f'* 결과 분석 및 출력')
-        pass
+        eval.export(config)
 
     if args.publish_results:
         cprint(f'* 토너먼트 결과 공개')
