@@ -17,7 +17,10 @@ from IPython import embed
 from . import config
 
 
-def export(config):
+FIG_SIZE = (13, 13)
+
+
+def export_results(config):
 
     df = pd.read_csv(
         config.csv_file, 
@@ -37,7 +40,7 @@ def export(config):
     win_count = grouped_score.sum().unstack(1).fillna(value=0)
     total_count = grouped_score.count().unstack(1).fillna(value=0)
 
-    fig, ax = plt.subplots(figsize=(13, 13))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     names = win_ratio.index.to_list()
     ax.set_xticks(np.arange(len(names)))
     ax.set_yticks(np.arange(len(names)))
@@ -80,7 +83,7 @@ def export(config):
     error_ratio = grouped_error.mean().unstack(1).fillna(value=0.0)
     error_count = grouped_error.sum().unstack(1).fillna(value=0)
 
-    fig, ax = plt.subplots(figsize=(13, 13))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     names = win_ratio.index.to_list()
     ax.set_xticks(np.arange(len(names)))
     ax.set_yticks(np.arange(len(names)))
@@ -123,7 +126,7 @@ def export(config):
     min_play_time = df_play_time['play_time'].min()
     play_times = grouped_play_time.mean().unstack(1).fillna(value=min_play_time)
 
-    fig, ax = plt.subplots(figsize=(13, 13))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     names = win_ratio.index.to_list()
     ax.set_xticks(np.arange(len(names)))
     ax.set_yticks(np.arange(len(names)))
@@ -188,6 +191,7 @@ def export(config):
 
     print(summary)
     summary.to_excel(config.out_dir / 'summary.xlsx', sheet_name='Sheet1')
+    summary.to_csv(config.out_dir / 'summary.csv')
 
     #
     # 전이 그래프
@@ -206,7 +210,7 @@ def export(config):
 
 
 def get_ranks(win_ratio, alpha=10, use_inf_alpha=False, inf_alpha_eps=0.01):
-    win_ratio.columns = [c[1] for c in win_ratio.columns]
+    # win_ratio.columns = [c[1] for c in win_ratio.columns]
     M = win_ratio.values
     names = win_ratio.columns
 
@@ -278,6 +282,7 @@ def draw_response_graph(config, names, C, pi, ranks):
     df_ranks.index = range(1, df_ranks.index.stop + 1)
     print(df_ranks)
     df_ranks.to_excel(config.out_dir / 'rank.xlsx', sheet_name='Sheet1')
+    df_ranks.to_csv(config.out_dir / 'rank.csv')
  
     edges = list()
     for s, name_s in enumerate(names):
@@ -299,7 +304,7 @@ def draw_response_graph(config, names, C, pi, ranks):
         'edge_labels': {(u, v): d["weight"] for u, v, d in DG.edges(data=True)}
     }
 
-    fig, ax = plt.subplots(figsize=(13, 13))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     # pos = nx.spring_layout(DG)
     pos = nx.planar_layout(DG)
     nx.draw(DG, pos=pos, **options)
@@ -309,4 +314,4 @@ def draw_response_graph(config, names, C, pi, ranks):
 
 if __name__ == '__main__':
 
-    export(config)
+    export_results(config)

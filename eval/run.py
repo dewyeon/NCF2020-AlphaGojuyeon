@@ -24,7 +24,7 @@ from termcolor import cprint
 from tqdm import tqdm, trange
 
 from eval.play_game import run_play_game
-from eval.export import export
+from eval.export import export_results
 
 from . import config
 from .config import args
@@ -119,6 +119,95 @@ def play_games(config):
             time.sleep(10)
 
 
+def publish_results(config):
+
+    def csv_to_table(filename, title):
+        buff = f"""
+.. list-table:: {title}
+   :header-rows: 1
+
+"""
+        with (config.out_dir / filename).open() as f:
+            reader = csv.reader(f)
+            for row in reader:
+                for i, item in enumerate(row):
+                    if i == 0:
+                        buff += f'   * - {item}\n'
+                    else:
+                        buff += f'     - {item}\n'
+        return buff
+
+    now = datetime.datetime.now().isoformat()
+    summary_table = csv_to_table('summary.csv', 'Summary')
+    rank_table = csv_to_table('rank.csv', 'alpha-Rank')
+
+    # README 파일 생성
+    with (config.out_dir / 'README.rst').open('wt') as f:
+        content = f"""
+NCF2020 결과
+===============
+
+(updated: {now})
+
+결과 요약
+-----------------
+
+{summary_table}
+
+.. figure:: score_as_player1.png
+   :figwidth: 200
+
+   Win ratio (as player 1)
+
+.. figure:: error.png
+   :figwidth: 200
+
+   Error ratio
+
+.. figure:: play_time.png
+   :figwidth: 200
+
+   Game Play Time (sec.)
+
+Rank (정식 결과는 아님)
+------------------------
+
+{rank_table}
+
+.. figure:: C.png
+   :figwidth: 200
+
+"""
+        f.write(content)
+
+    cwd =  os.getcwd()
+    os.chdir(config.out_dir)
+
+    # git 저장소가 없으면 clone
+    if not (cwd / config.out_dir / '.git').exists():
+        cmd = 'git clone https://github.com/rex8312/NCF2020_Eval.git'
+        cprint(cmd, 'green')
+        os.system(cmd)
+
+    # git 저장소에 push
+    if (cwd / config.out_dir / '.git' / 'index.lock').exists():
+        (cwd / config.out_dir / '.git' / 'index.lock').unlink()
+    if (cwd / config.out_dir / '.git' / 'config.lock').exists():
+        (cwd / config.out_dir / '.git' / 'config.lock').unlink()
+
+    cmds = [
+        'git pull -f',
+        'git add *',
+        f'git commit -m "{now}"',
+        'git remote add origin https://github.com/rex8312/NCF2020_Eval.git',
+        'git push -u origin master',
+    ]
+    for cmd in cmds:
+        cprint(cmd, 'green')
+        os.system(cmd)
+
+    os.chdir(cwd)
+
 if __name__ == '__main__':
 
     cprint(f'* 평가: {config.root_dir}')
@@ -130,16 +219,17 @@ if __name__ == '__main__':
             cprint(f'> 업데이트 실패', 'red')
             exit(1)
 
+    # TODO: 오래된 결과 삭제
+    # TODO: Elo or Trueskill 결과 추가
+
     if args.play_games:
         cprint(f'* 토너먼트 시작')
         play_games(config)
 
     if args.export_results:
         cprint(f'* 결과 분석 및 출력')
-        export(config)
+        export_results(config)
 
     if args.publish_results:
         cprint(f'* 토너먼트 결과 공개')
-        pass
-
-    embed(); exit()
+        publish_results(config)
