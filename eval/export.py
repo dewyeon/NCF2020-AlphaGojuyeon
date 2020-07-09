@@ -1,5 +1,7 @@
 
 import csv
+import enum
+import shutil
 from datetime import datetime
 
 import numpy as np
@@ -12,7 +14,7 @@ import scipy.linalg as la
 
 from . import config
 
-FIG_SIZE = (13, 13)
+FIG_SIZE = (13, 8)
 
 
 def export_results(config):
@@ -68,7 +70,7 @@ def export_results(config):
                     color=(brightness, brightness, brightness)
                 )
     # plt.show()
-    plt.savefig(config.out_dir / 'score_as_player1.png')
+    plt.savefig(config.fig_dir / 'score_as_player1.png')
 
     #
     # 에러
@@ -111,7 +113,7 @@ def export_results(config):
                     color=(brightness, brightness, brightness)
                 )
     # plt.show()
-    plt.savefig(config.out_dir / 'error.png')
+    plt.savefig(config.fig_dir / 'error.png')
 
     #
     # 게임 플레이 시간
@@ -153,7 +155,7 @@ def export_results(config):
                     color=(font, font, font)
                 )
     # plt.show()
-    plt.savefig(config.out_dir / 'play_time.png')
+    plt.savefig(config.fig_dir / 'play_time.png')
 
     #
     # TABLE
@@ -186,7 +188,7 @@ def export_results(config):
 
     print(summary)
     # summary.to_excel(config.out_dir / 'summary.xlsx', sheet_name='Sheet1')
-    summary.to_csv(config.out_dir / 'summary.csv')
+    summary.to_csv(config.log_dir / 'summary.csv')
 
     #
     # 전이 그래프
@@ -202,6 +204,11 @@ def export_results(config):
     else:
         C, pi, ranks = get_ranks(total_win_raito, alpha=config.args.alpha)
     draw_response_graph(config, names, C, pi, ranks)
+
+    # 
+    # Elo 계산
+    # 
+    update_elo_rating(config)
 
     #
     # README.rst 파일 업데이트
@@ -282,7 +289,7 @@ def draw_response_graph(config, names, C, pi, ranks):
     df_ranks.index = range(1, df_ranks.index.stop + 1)
     print(df_ranks)
     # df_ranks.to_excel(config.out_dir / 'rank.xlsx', sheet_name='Sheet1')
-    df_ranks.to_csv(config.out_dir / 'rank.csv')
+    df_ranks.to_csv(config.log_dir / 'rank.csv')
  
     edges = list()
     for s, name_s in enumerate(names):
@@ -312,6 +319,51 @@ def draw_response_graph(config, names, C, pi, ranks):
     plt.savefig(config.out_dir / 'C.png')
 
 
+def update_elo_rating(config):
+
+    def k_factor(elo_rating):
+        """
+        player의 k factor 계산
+        """
+        if elo_rating < 1100:
+            return 25
+        elif elo_rating < 2400:
+            return 15
+        else:
+            return 10
+    
+    df = pd.read_csv(
+        config.csv_file, 
+        names=['no', 'p1', 'p2', 'map', 'p1_score', 'p2_score', 'error', 'play_time']
+    )
+
+    names = list(sorted(config.teams.keys()))
+    elo_ratings = {name: [config.init_elo_rating] for name in names}
+
+    for i in range(df.shape[0]):
+        row = df.loc[i]
+        if row['p1'] != row['p2']:
+            old_p1_elo = elo_ratings[row['p1']][-1]
+            old_p2_elo = elo_ratings[row['p2']][-1]
+
+            p1_exp_score = 1 / (1 + 10 ** ((old_p2_elo - old_p1_elo) / 400))
+            new_p1_elo = old_p1_elo + k_factor(old_p1_elo) * (row['p1_score'] - p1_exp_score)
+            elo_ratings[row['p1']].append(new_p1_elo)
+
+            p2_exp_score = 1 / (1 + 10 ** ((old_p1_elo - old_p2_elo) / 400))
+            new_p2_elo = old_p2_elo + k_factor(old_p2_elo) * (row['p2_score'] - p2_exp_score)
+            elo_ratings[row['p2']].append(new_p2_elo)
+            
+    max_x = max(len(vs) for vs in elo_ratings.values())
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    for name in names:
+        ax.plot(elo_ratings[name])
+        ax.text(max_x + 10, elo_ratings[name][-1], name)
+    ax.set_xlim(0, max_x + 50)
+    plt.savefig(config.fig_dir / 'elo.png')
+    plt.close()
+
+
 def write_readme(config):
 
     def csv_to_table(filename, title):
@@ -331,8 +383,8 @@ def write_readme(config):
         return buff
 
     now = datetime.now().isoformat()
-    summary_table = csv_to_table('summary.csv', 'Summary')
-    rank_table = csv_to_table('rank.csv', 'alpha-Rank')
+    summary_table = csv_to_table('log/summary.csv', 'Summary')
+    rank_table = csv_to_table('log/rank.csv', 'alpha-Rank')
 
     # README 파일 생성
     with (config.out_dir / 'README.rst').open('wt') as f:
@@ -342,32 +394,35 @@ NCF2020 결과
 
 (updated: {now})
 
-결과 요약
------------------
+.. figure:: fig/elo.png
+   :figwidth: 200
+
+   Elo rating
 
 {summary_table}
 
-.. figure:: score_as_player1.png
+기타 분석자료
+-----------------
+
+.. figure:: fig/score_as_player1.png
    :figwidth: 200
 
    Win ratio (as player 1)
 
-.. figure:: error.png
+.. figure:: fig/error.png
    :figwidth: 200
 
    Error ratio
 
-.. figure:: play_time.png
+.. figure:: fig/play_time.png
    :figwidth: 200
 
    Game Play Time (sec.)
 
-Rank (정식 결과는 아님)
-------------------------
 
 {rank_table}
 
-.. figure:: C.png
+.. figure:: fig/C.png
    :figwidth: 200
 
 """

@@ -158,10 +158,12 @@ if __name__ == '__main__':
 
     sync_results(config, push=False)
 
+    etimes = dict()
     for round_no in range(config.max_rounds):
-        if args.update_bots:
+        if args.update_bots and time.monotonic() - etimes.get(update_bots, 0) > 60:
             cprint(f'* 봇 업데이트', 'green', 'on_red')
             result = update_bots(config)
+            etimes[update_bots] = time.monotonic()
             if any(result):
                 cprint(f'> 업데이트 실패', 'red')
                 exit(1)
@@ -170,10 +172,12 @@ if __name__ == '__main__':
             cprint(f'* 토너먼트 시작', 'green', 'on_red')
             play_games(config, round_no + 1)
 
-        if args.export_results:
+        if args.export_results and time.monotonic() - etimes.get(export_results, 0) > 60:
             cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
             export_results(config)
+            etimes[export_results] = time.monotonic()
 
-        if args.publish_results:
+        if args.publish_results and time.monotonic() - etimes.get(sync_results, 0) > 60:
             cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
             sync_results(config, push=True)
+            etimes[sync_results] = time.monotonic()
