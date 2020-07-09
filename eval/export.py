@@ -312,12 +312,12 @@ def draw_response_graph(config, names, C, pi, ranks):
         'edge_labels': {(u, v): d["weight"] for u, v, d in DG.edges(data=True)}
     }
 
-    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    fig, ax = plt.subplots(figsize=(13, 13))
     # pos = nx.spring_layout(DG)
     pos = nx.planar_layout(DG)
     nx.draw(DG, pos=pos, **options)
     nx.draw_networkx_edge_labels(DG, pos=pos, **options)
-    plt.savefig(config.out_dir / 'C.png')
+    plt.savefig(config.fig_dir / 'C.png')
 
 
 def update_elo_rating(config):
@@ -358,9 +358,11 @@ def update_elo_rating(config):
     max_x = max(len(vs) for vs in elo_ratings.values())
     fig, ax = plt.subplots(figsize=FIG_SIZE)
     for name in names:
-        ax.plot(elo_ratings[name])
+        ax.plot(elo_ratings[name], label=name)
         ax.text(max_x + 10, elo_ratings[name][-1], name)
-    ax.set_xlim(0, max_x + 50)
+    ax.set_xlim(0, max_x + 20)
+    ax.legend(loc=2)
+    # plt.subplots_adjust(right=0.75)
     plt.savefig(config.fig_dir / 'elo.png')
     plt.close()
 
