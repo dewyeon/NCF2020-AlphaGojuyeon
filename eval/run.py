@@ -4,8 +4,7 @@ __author__ = '박현수(hspark8312@ncsoft.com), NSSOFT Game AI Lab'
 
 
 import csv
-import datetime
-import importlib
+from datetime import datetime
 import itertools
 import logging
 import multiprocessing as mp
@@ -57,7 +56,7 @@ def update_bots(config):
     return result
 
 
-def play_games(config):
+def play_games(config, n_rounds):
     config.replay_dir.mkdir(exist_ok=True, parents=True)
 
     # 게임 생성
@@ -72,14 +71,13 @@ def play_games(config):
                 excludes.append(f'{n}-{p1}-{p2}')
 
     # 게임 실행
-    for n in trange(args.n_rounds):
+    for n in trange(n_rounds):
         for match in tqdm(match_list, leave=False):
             p1, p2 = match
 
             round_key = f'{n}-{p1}-{p2}'
             if round_key in excludes:
                 tqdm.write(f'SKIP: {round_key}')
-                time.sleep(0.1)
                 continue
 
             bot1 = config.teams[p1].class_path
@@ -119,75 +117,17 @@ def play_games(config):
             time.sleep(10)
 
 
-def publish_results(config):
-
-    def csv_to_table(filename, title):
-        buff = f"""
-.. list-table:: {title}
-   :header-rows: 1
-
-"""
-        with (config.out_dir / filename).open() as f:
-            reader = csv.reader(f)
-            for row in reader:
-                for i, item in enumerate(row):
-                    if i == 0:
-                        buff += f'   * - {item}\n'
-                    else:
-                        buff += f'     - {item}\n'
-        return buff
-
-    now = datetime.datetime.now().isoformat()
-    summary_table = csv_to_table('summary.csv', 'Summary')
-    rank_table = csv_to_table('rank.csv', 'alpha-Rank')
-
-    # README 파일 생성
-    with (config.out_dir / 'README.rst').open('wt') as f:
-        content = f"""
-NCF2020 결과
-===============
-
-(updated: {now})
-
-결과 요약
------------------
-
-{summary_table}
-
-.. figure:: score_as_player1.png
-   :figwidth: 200
-
-   Win ratio (as player 1)
-
-.. figure:: error.png
-   :figwidth: 200
-
-   Error ratio
-
-.. figure:: play_time.png
-   :figwidth: 200
-
-   Game Play Time (sec.)
-
-Rank (정식 결과는 아님)
-------------------------
-
-{rank_table}
-
-.. figure:: C.png
-   :figwidth: 200
-
-"""
-        f.write(content)
+def sync_results(config, push):
 
     cwd =  os.getcwd()
-    os.chdir(config.out_dir)
 
     # git 저장소가 없으면 clone
-    if not (cwd / config.out_dir / '.git').exists():
-        cmd = 'git clone https://github.com/rex8312/NCF2020_Eval.git'
+    if not (cwd / config.out_dir).exists():
+        cmd = f'git clone https://github.com/rex8312/NCF2020_Eval.git {(cwd / config.out_dir)}'
         cprint(cmd, 'green')
         os.system(cmd)
+
+    os.chdir(config.out_dir)
 
     # git 저장소에 push
     if (cwd / config.out_dir / '.git' / 'index.lock').exists():
@@ -195,13 +135,17 @@ Rank (정식 결과는 아님)
     if (cwd / config.out_dir / '.git' / 'config.lock').exists():
         (cwd / config.out_dir / '.git' / 'config.lock').unlink()
 
-    cmds = [
-        'git pull -f',
-        'git add *',
-        f'git commit -m "{now}"',
-        'git remote add origin https://github.com/rex8312/NCF2020_Eval.git',
-        'git push -u origin master',
-    ]
+    if push:
+        cmds = [
+            'git pull -f',
+            'git add *',
+            f'git commit -m "{datetime.now().isoformat()}"',
+            'git remote add origin https://github.com/rex8312/NCF2020_Eval.git',
+            'git push -u origin master',
+        ]
+    else:
+        cmds = ['git pull -f']
+
     for cmd in cmds:
         cprint(cmd, 'green')
         os.system(cmd)
@@ -210,26 +154,26 @@ Rank (정식 결과는 아님)
 
 if __name__ == '__main__':
 
-    cprint(f'* 평가: {config.root_dir}')
+    cprint(f'* 평가: {config.root_dir}', 'green', 'on_red')
 
-    if args.update_bots:
-        cprint(f'* 봇 업데이트')
-        result = update_bots(config)
-        if any(result):
-            cprint(f'> 업데이트 실패', 'red')
-            exit(1)
+    sync_results(config, push=False)
 
-    # TODO: 오래된 결과 삭제
-    # TODO: Elo or Trueskill 결과 추가
+    for round_no in range(config.max_rounds):
+        if args.update_bots:
+            cprint(f'* 봇 업데이트', 'green', 'on_red')
+            result = update_bots(config)
+            if any(result):
+                cprint(f'> 업데이트 실패', 'red')
+                exit(1)
 
-    if args.play_games:
-        cprint(f'* 토너먼트 시작')
-        play_games(config)
+        if args.play_games:
+            cprint(f'* 토너먼트 시작', 'green', 'on_red')
+            play_games(config, round_no + 1)
 
-    if args.export_results:
-        cprint(f'* 결과 분석 및 출력')
-        export_results(config)
+        if args.export_results:
+            cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
+            export_results(config)
 
-    if args.publish_results:
-        cprint(f'* 토너먼트 결과 공개')
-        publish_results(config)
+        if args.publish_results:
+            cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
+            sync_results(config, push=True)

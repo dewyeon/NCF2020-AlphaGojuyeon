@@ -1,21 +1,16 @@
 
-# echo "# ncf-midterm-1" >> README.md
-# git init
-# git add README.md
-# git commit -m "first commit"
-# git remote add origin https://github.com/rex8312/ncf-midterm-1.git
-# git push -u origin master
+import csv
+from datetime import datetime
 
-import enum
-import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
-import pandas as pd
-import scipy.linalg as la
 from IPython import embed
 
-from . import config
+import matplotlib.pyplot as plt
+import networkx as nx
+import pandas as pd
+import scipy.linalg as la
 
+from . import config
 
 FIG_SIZE = (13, 13)
 
@@ -190,7 +185,7 @@ def export_results(config):
     summary = summary.sort_values(by='win ratio', ascending=False)
 
     print(summary)
-    summary.to_excel(config.out_dir / 'summary.xlsx', sheet_name='Sheet1')
+    # summary.to_excel(config.out_dir / 'summary.xlsx', sheet_name='Sheet1')
     summary.to_csv(config.out_dir / 'summary.csv')
 
     #
@@ -207,6 +202,11 @@ def export_results(config):
     else:
         C, pi, ranks = get_ranks(total_win_raito, alpha=config.args.alpha)
     draw_response_graph(config, names, C, pi, ranks)
+
+    #
+    # README.rst 파일 업데이트
+    #
+    write_readme(config)
 
 
 def get_ranks(win_ratio, alpha=10, use_inf_alpha=False, inf_alpha_eps=0.01):
@@ -281,7 +281,7 @@ def draw_response_graph(config, names, C, pi, ranks):
     df_ranks.index.name = 'rank'
     df_ranks.index = range(1, df_ranks.index.stop + 1)
     print(df_ranks)
-    df_ranks.to_excel(config.out_dir / 'rank.xlsx', sheet_name='Sheet1')
+    # df_ranks.to_excel(config.out_dir / 'rank.xlsx', sheet_name='Sheet1')
     df_ranks.to_csv(config.out_dir / 'rank.csv')
  
     edges = list()
@@ -310,6 +310,68 @@ def draw_response_graph(config, names, C, pi, ranks):
     nx.draw(DG, pos=pos, **options)
     nx.draw_networkx_edge_labels(DG, pos=pos, **options)
     plt.savefig(config.out_dir / 'C.png')
+
+
+def write_readme(config):
+
+    def csv_to_table(filename, title):
+        buff = f"""
+.. list-table:: {title}
+   :header-rows: 1
+
+"""
+        with (config.out_dir / filename).open() as f:
+            reader = csv.reader(f)
+            for row in reader:
+                for i, item in enumerate(row):
+                    if i == 0:
+                        buff += f'   * - {item}\n'
+                    else:
+                        buff += f'     - {item}\n'
+        return buff
+
+    now = datetime.now().isoformat()
+    summary_table = csv_to_table('summary.csv', 'Summary')
+    rank_table = csv_to_table('rank.csv', 'alpha-Rank')
+
+    # README 파일 생성
+    with (config.out_dir / 'README.rst').open('wt') as f:
+        content = f"""
+NCF2020 결과
+===============
+
+(updated: {now})
+
+결과 요약
+-----------------
+
+{summary_table}
+
+.. figure:: score_as_player1.png
+   :figwidth: 200
+
+   Win ratio (as player 1)
+
+.. figure:: error.png
+   :figwidth: 200
+
+   Error ratio
+
+.. figure:: play_time.png
+   :figwidth: 200
+
+   Game Play Time (sec.)
+
+Rank (정식 결과는 아님)
+------------------------
+
+{rank_table}
+
+.. figure:: C.png
+   :figwidth: 200
+
+"""
+        f.write(content)
 
 
 if __name__ == '__main__':
