@@ -26,6 +26,7 @@ parser.add_argument('--timeout', type=int, default=1800)
 parser.add_argument('--save_replay', type=lambda x: x in ('True', 'true', '1'), default=True)
 parser.add_argument('--replay_path', type=str, default=None)
 parser.add_argument('--alpha', type=float, default=None)
+parser.add_argument('--init_elo_rating', type=float, default=1000)
 args = parser.parse_args()
 
 # 평가용 봇과 결과가 저장되는 폴더
@@ -52,3 +53,4 @@ for name in repos.keys():
     teams[name] = Team(name, f'{root_dir}.bots.{name}.bot.Bot', repos[name])
 
 max_rounds = args.max_rounds
+init_elo_rating = args.init_elo_rating
