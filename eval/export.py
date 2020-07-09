@@ -1,6 +1,7 @@
 
 import csv
 from datetime import datetime
+import enum
 
 import numpy as np
 from IPython import embed
@@ -203,6 +204,11 @@ def export_results(config):
         C, pi, ranks = get_ranks(total_win_raito, alpha=config.args.alpha)
     draw_response_graph(config, names, C, pi, ranks)
 
+    # 
+    # Elo 계산
+    # 
+    update_elo_rating(config)
+
     #
     # README.rst 파일 업데이트
     #
@@ -312,6 +318,51 @@ def draw_response_graph(config, names, C, pi, ranks):
     plt.savefig(config.out_dir / 'C.png')
 
 
+def update_elo_rating(config):
+
+    def k_factor(elo_rating):
+        """
+        player의 k factor 계산
+        """
+        if elo_rating < 1100:
+            return 25
+        elif elo_rating < 2400:
+            return 15
+        else:
+            return 10
+    
+    df = pd.read_csv(
+        config.csv_file, 
+        names=['no', 'p1', 'p2', 'map', 'p1_score', 'p2_score', 'error', 'play_time']
+    )
+
+    names = list(sorted(config.teams.keys()))
+    elo_ratings = {name: [config.init_elo_rating] for name in names}
+
+    for i in range(df.shape[0]):
+        row = df.loc[i]
+        if row['p1'] != row['p2']:
+            old_p1_elo = elo_ratings[row['p1']][-1]
+            old_p2_elo = elo_ratings[row['p2']][-1]
+
+            p1_exp_score = 1 / (1 + 10 ** ((old_p2_elo - old_p1_elo) / 400))
+            new_p1_elo = old_p1_elo + k_factor(old_p1_elo) * (row['p1_score'] - p1_exp_score)
+            elo_ratings[row['p1']].append(new_p1_elo)
+
+            p2_exp_score = 1 / (1 + 10 ** ((old_p1_elo - old_p2_elo) / 400))
+            new_p2_elo = old_p2_elo + k_factor(old_p2_elo) * (row['p2_score'] - p2_exp_score)
+            elo_ratings[row['p2']].append(new_p2_elo)
+            
+    max_x = max(len(vs) for vs in elo_ratings.values())
+    fig, ax = plt.subplots(figsize=(13, 8))
+    for name in names:
+        ax.plot(elo_ratings[name])
+        ax.text(max_x + 10, elo_ratings[name][-1], name)
+    ax.set_xlim(0, max_x + 50)
+    plt.savefig(config.out_dir / 'elo.png')
+    plt.close()
+
+
 def write_readme(config):
 
     def csv_to_table(filename, title):
@@ -342,10 +393,15 @@ NCF2020 결과
 
 (updated: {now})
 
-결과 요약
------------------
+.. figure:: elo.png
+   :figwidth: 200
+
+   Elo rating
 
 {summary_table}
+
+기타 분석자료
+-----------------
 
 .. figure:: score_as_player1.png
    :figwidth: 200
@@ -362,8 +418,6 @@ NCF2020 결과
 
    Game Play Time (sec.)
 
-Rank (정식 결과는 아님)
-------------------------
 
 {rank_table}
 
