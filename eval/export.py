@@ -3,6 +3,7 @@ import csv
 import enum
 import shutil
 from datetime import datetime
+import enum
 
 import numpy as np
 from IPython import embed
