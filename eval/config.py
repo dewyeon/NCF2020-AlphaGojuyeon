@@ -63,6 +63,7 @@ for name in repos.keys():
     teams[name] = Team(name, f'{root_dir}.bots.{name}.bot.Bot', repos[name])
 
 max_rounds = args.max_rounds
+assert max_rounds // 10 == max_rounds / 10
 init_elo_rating = args.init_elo_rating
 verbose = args.verbose
 out_repo = args.out_repo
