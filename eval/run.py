@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 from IPython import embed
-from termcolor import cprint
+from termcolor import cprint, colored
 from tqdm import tqdm, trange
 
 from eval.play_game import run_play_game
@@ -56,7 +56,7 @@ def update_bots(config):
     return result
 
 
-def play_games(config, n_rounds):
+def play_games(config, n_rounds, verbose):
     config.replay_dir.mkdir(exist_ok=True, parents=True)
 
     # 게임 생성
@@ -71,14 +71,18 @@ def play_games(config, n_rounds):
                 excludes.append(f'{n}-{p1}-{p2}')
 
     # 게임 실행
+    n_updates = 0
     for n in trange(n_rounds):
         for match in tqdm(match_list, leave=False):
             p1, p2 = match
 
             round_key = f'{n}-{p1}-{p2}'
             if round_key in excludes:
-                tqdm.write(f'SKIP: {round_key}')
+                if verbose:
+                    tqdm.write(f'SKIP: {round_key}')
                 continue
+            else:
+                n_updates += 1
 
             bot1 = config.teams[p1].class_path
             bot2 = config.teams[p2].class_path
@@ -98,8 +102,9 @@ def play_games(config, n_rounds):
 
             try:
                 
-                result = run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path)
-                tqdm.write(f'Round: {n}, {p1}: {result[0]}, {p2}: {result[1]}, error: {result[2]}')
+                result = run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path, verbose)
+                if verbose:
+                    tqdm.write(f'Round: {n}, {p1}: {result[0]}, {p2}: {result[1]}, error: {result[2]}')
 
             except Exception as e:
                 result = [0.5, 0.5, 1.0]
@@ -116,6 +121,8 @@ def play_games(config, n_rounds):
 
             time.sleep(10)
 
+    return n_updates > 0
+
 
 def sync_results(config, push):
 
@@ -123,7 +130,7 @@ def sync_results(config, push):
 
     # git 저장소가 없으면 clone
     if not (cwd / config.out_dir).exists():
-        cmd = f'git clone https://github.com/rex8312/NCF2020_Eval.git {(cwd / config.out_dir)}'
+        cmd = f'git clone {config.out_repo} {(cwd / config.out_dir)}'
         cprint(cmd, 'green')
         os.system(cmd)
 
@@ -138,9 +145,10 @@ def sync_results(config, push):
     if push:
         cmds = [
             'git pull -f',
+            'git add -u',
             'git add *',
             f'git commit -m "{datetime.now().isoformat()}"',
-            'git remote add origin https://github.com/rex8312/NCF2020_Eval.git',
+            f'git remote add origin {config.out_repo}',
             'git push -u origin master',
         ]
     else:
@@ -158,26 +166,23 @@ if __name__ == '__main__':
 
     sync_results(config, push=False)
 
-    etimes = dict()
-    for round_no in range(config.max_rounds):
-        if args.update_bots and time.monotonic() - etimes.get(update_bots, 0) > 60:
-            cprint(f'* 봇 업데이트', 'green', 'on_red')
-            result = update_bots(config)
-            etimes[update_bots] = time.monotonic()
-            if any(result):
-                cprint(f'> 업데이트 실패', 'red')
-                exit(1)
+    if args.update_bots:
+        cprint(f'* 봇 업데이트', 'green', 'on_red')
+        result = update_bots(config)
+        if any(result):
+            cprint(f'> 업데이트 실패', 'red')
+            exit(1)
 
-        if args.play_games:
-            cprint(f'* 토너먼트 시작', 'green', 'on_red')
-            play_games(config, round_no + 1)
+    if args.play_games:
+        cprint(f'* 토너먼트 시작', 'green', 'on_red')
+        updated = play_games(config, config.max_rounds, verbose=config.verbose)
+    else:
+        updated = False
 
-        if args.export_results and time.monotonic() - etimes.get(export_results, 0) > 60:
-            cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
-            export_results(config)
-            etimes[export_results] = time.monotonic()
+    if args.export_results and updated:
+        cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
+        export_results(config)
 
-        if args.publish_results and time.monotonic() - etimes.get(sync_results, 0) > 60:
-            cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
-            sync_results(config, push=True)
-            etimes[sync_results] = time.monotonic()
+    if args.publish_results and updated:
+        cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
+        sync_results(config, push=True)

@@ -26,7 +26,12 @@ parser.add_argument('--save_replay', type=lambda x: x in ('True', 'true', '1'), 
 parser.add_argument('--replay_path', type=str, default=None)
 parser.add_argument('--alpha', type=float, default=None)
 parser.add_argument('--init_elo_rating', type=float, default=1000)
+parser.add_argument('--verbose', action='store_true')
+parser.add_argument('--out_repo', type=str, default='https://github.com/rex8312/NCF2020_Eval.git')
 args = parser.parse_args()
+
+# 평가시작시간
+t_start = datetime.now()
 
 # 평가용 봇과 결과가 저장되는 폴더
 root_dir = Path(args.root_path)
@@ -59,3 +64,5 @@ for name in repos.keys():
 
 max_rounds = args.max_rounds
 init_elo_rating = args.init_elo_rating
+verbose = args.verbose
+out_repo = args.out_repo
