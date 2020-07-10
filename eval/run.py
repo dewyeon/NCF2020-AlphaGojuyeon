@@ -56,7 +56,7 @@ def update_bots(config):
     return result
 
 
-def play_games(config, n_rounds, verbose):
+def play_games(config, round_start, round_end, verbose):
     config.replay_dir.mkdir(exist_ok=True, parents=True)
 
     # 게임 생성
@@ -72,7 +72,7 @@ def play_games(config, n_rounds, verbose):
 
     # 게임 실행
     n_updates = 0
-    for n in trange(n_rounds):
+    for n in trange(round_start, round_end):
         for match in tqdm(match_list, leave=False):
             p1, p2 = match
 
@@ -173,16 +173,28 @@ if __name__ == '__main__':
             cprint(f'> 업데이트 실패', 'red')
             exit(1)
 
-    if args.play_games:
-        cprint(f'* 토너먼트 시작', 'green', 'on_red')
-        updated = play_games(config, config.max_rounds, verbose=config.verbose)
-    else:
-        updated = False
+    # export_results(config)
+    # sync_results(config, push=True)
 
-    if args.export_results and updated:
-        cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
-        export_results(config)
+    for i in range(config.max_rounds // 10):
+        round_start = i * 10
+        round_end = (i + 1) * 10
 
-    if args.publish_results and updated:
-        cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
-        sync_results(config, push=True)
+        if args.play_games:
+            cprint(f'* 토너먼트 시작 {round_start} -> {round_end}', 'green', 'on_red')
+            updated = play_games(
+                config, 
+                round_start, 
+                round_end, 
+                verbose=config.verbose
+            )
+        else:
+            updated = False
+
+        if args.export_results and updated:
+            cprint(f'* 결과 분석 및 출력', 'green', 'on_red')
+            export_results(config)
+
+        if args.publish_results and updated:
+            cprint(f'* 토너먼트 결과 공개', 'green', 'on_red')
+            sync_results(config, push=True)

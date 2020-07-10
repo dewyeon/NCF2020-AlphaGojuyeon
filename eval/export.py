@@ -1,9 +1,6 @@
 
 import csv
-import enum
-import shutil
 from datetime import datetime
-import enum
 
 import numpy as np
 from IPython import embed
@@ -15,7 +12,7 @@ import scipy.linalg as la
 
 from . import config
 
-FIG_SIZE = (13, 8)
+FIG_SIZE = (13, 13)
 
 
 def export_results(config):
@@ -417,36 +414,64 @@ NCF2020 결과
      - {t_current - config.t_start}
      - {n_played_rounds / n_total_rounds:.3f}
 
+**Elo rating**
+
+- https://en.wikipedia.org/wiki/Chess_rating_system
+- K: 10~25, C=400
+
 .. figure:: fig/elo.png
    :figwidth: 200
 
-   Elo rating
+**결과 요약**
 
 {summary_table}
+
+- win ratio: 전체 승률
+- #wins (pn): 플레이어 n으로 승리한 횟수
+- #games (pn): 플레이어 n으로 플레이한 횟수
+- win ratio (pn): 플레이어 n으로 플레이했을 때 승률
+- #errors: 참가한 게임에서 error가 발생한 횟수 (상대 플레이어가 에러를 발생시켰을 수 있음)
+- player_time: 평균 게임 플레이 시간
+
 
 기타 분석자료
 -----------------
 
+**플레이어 1으로 플레이 했을 때 승률**
+
+- 플레이어 1 (row)과 플레이어 2 (column)이 플래이 했을 때, 플레이어 1의 승률 (승리 횟수 / 게임 횟수 = 승률)
+- 승률이 높을 수록 밝음
+
 .. figure:: fig/score_as_player1.png
    :figwidth: 200
 
-   Win ratio (as player 1)
+**에러율**
+
+- 플레이어 1 (row)과 플레이어 2 (column)이 플래이 했을 때, 에러 발생 확률 (에러 발생 횟수 / 게임 횟수 = 에러율)
+- 게임 도중에 에러가 발생해서, 정상적으로 게임을 플레이하지 못할 경우
+- 플레이어 1과 플레이어 2 중에 누가 에러를 발생했는지는 이 그림에서 확인 불가능하므로, 자세한 원인을 알기 위해서는 로그 파일을 분석해야 함
+- AI 때문에 에러가 발생한 경우 에러를 발생시킨 AI의 패배로 게임이 종료
 
 .. figure:: fig/error.png
    :figwidth: 200
 
-   Error ratio
+**게임 플레이 시간**
+
+- 플레이어 1 (row)과 플레이어 2 (column)이 플래이 했을 때, 평균 플레이 시간
 
 .. figure:: fig/play_time.png
    :figwidth: 200
 
-   Game Play Time (sec.)
+**AI 상성 네트워크**
 
-
-{rank_table}
+- 여러 AI 사이의 상성을 나타내는 그래프
+- AI a가 b에게 승률이 높다면 a <- b로 표시함
+- https://arxiv.org/abs/1903.01373
 
 .. figure:: fig/C.png
    :figwidth: 200
+
+{rank_table}
 
 """
         f.write(content)
