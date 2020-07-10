@@ -72,6 +72,7 @@ def export_results(config):
                 )
     # plt.show()
     plt.savefig(config.fig_dir / 'score_as_player1.png')
+    plt.clf()
 
     #
     # 에러
@@ -115,6 +116,7 @@ def export_results(config):
                 )
     # plt.show()
     plt.savefig(config.fig_dir / 'error.png')
+    plt.clf()
 
     #
     # 게임 플레이 시간
@@ -157,6 +159,7 @@ def export_results(config):
                 )
     # plt.show()
     plt.savefig(config.fig_dir / 'play_time.png')
+    plt.clf()
 
     #
     # TABLE
@@ -214,7 +217,9 @@ def export_results(config):
     #
     # README.rst 파일 업데이트
     #
-    write_readme(config)
+    n_played_rounds = df.shape[0]
+    n_total_rounds = len(names) ** 2 * config.max_rounds
+    write_readme(config, n_played_rounds, n_total_rounds)
 
 
 def get_ranks(win_ratio, alpha=10, use_inf_alpha=False, inf_alpha_eps=0.01):
@@ -318,6 +323,7 @@ def draw_response_graph(config, names, C, pi, ranks):
     nx.draw(DG, pos=pos, **options)
     nx.draw_networkx_edge_labels(DG, pos=pos, **options)
     plt.savefig(config.fig_dir / 'C.png')
+    plt.clf()
 
 
 def update_elo_rating(config):
@@ -364,10 +370,10 @@ def update_elo_rating(config):
     ax.legend(loc=2)
     # plt.subplots_adjust(right=0.75)
     plt.savefig(config.fig_dir / 'elo.png')
-    plt.close()
+    plt.clf()
 
 
-def write_readme(config):
+def write_readme(config, n_played_rounds, n_total_rounds):
 
     def csv_to_table(filename, title):
         buff = f"""
@@ -382,10 +388,14 @@ def write_readme(config):
                     if i == 0:
                         buff += f'   * - {item}\n'
                     else:
-                        buff += f'     - {item}\n'
+                        if item.replace('.', '', 1).isdigit():
+                            # float 확인
+                            buff += f'     - {float(item):.3f}\n'
+                        else:
+                            buff += f'     - {item}\n'
         return buff
 
-    now = datetime.now().isoformat()
+    t_current = datetime.now()
     summary_table = csv_to_table('log/summary.csv', 'Summary')
     rank_table = csv_to_table('log/rank.csv', 'alpha-Rank')
 
@@ -395,7 +405,17 @@ def write_readme(config):
 NCF2020 결과
 ===============
 
-(updated: {now})
+.. list-table:: 진행현황
+   :header-rows: 1
+ 
+   * - 시작시간
+     - 현재시간
+     - 경과시간
+     - 진행률
+   * - {config.t_start.isoformat()}
+     - {t_current.isoformat()}
+     - {t_current - config.t_start}
+     - {n_played_rounds / n_total_rounds:.3f}
 
 .. figure:: fig/elo.png
    :figwidth: 200

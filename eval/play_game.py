@@ -30,7 +30,7 @@ logger = logging.getLogger(__file__)
 logger.setLevel(logging.DEBUG)
 
 
-def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path):
+def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path, verbose):
     # TODO: 시간초과 검사
     # TODO: 예외처리
     # TODO: 시간측정
@@ -40,8 +40,8 @@ def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path
 
     result = [0.5, 0.5, 0.0]
     try:
-        # tqdm.write(f'{}')
-        tqdm.write(f'[{datetime.datetime.today().isoformat()}] {cmd}')
+        if verbose:
+            tqdm.write(f'[{datetime.datetime.today().isoformat()}] {cmd}')
         pout = subprocess.run(
             shlex.split(cmd), 
             stdout=subprocess.PIPE, 
