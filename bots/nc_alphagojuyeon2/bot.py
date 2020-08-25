@@ -139,4 +139,3 @@ class Bot(sc2.BotAI):
                     actions.append(unit.move(combat_units.center))
 
         await self.do_actions(actions)
-
