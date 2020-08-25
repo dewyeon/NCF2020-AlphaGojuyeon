@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # 옵션
     parser.add_argument(
         '--realtime',
-        action='store_true',
+        action='store_false',
         help='false일 때는 빠르게 게임이 실행됨')
     parser.add_argument(
         '--render',
