@@ -116,12 +116,29 @@ class Bot(sc2.BotAI):
         # 의료선 명령 생성
         #
         medivacs = self.units(UnitTypeId.MEDIVAC)
+
         wounded_units = self.units.filter(
             lambda u: u.is_biological and u.health_percentage < 1.0
         )
+        # 생명력 퍼센티지가 낮은 순서대로 정렬
+        wounded_units.sort(key=lambda x : x.health_percentage)
+
+        # print(wounded_units)
+        # for wu in wounded_units:
+        #     print(wu, wu.health_percentage)
+
+        # for medivac in medivacs:
+        #     if wounded_units.exists:
+        #         wounded_unit = wounded_units.closest_to(medivac)
+        #         actions.append(medivac(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))
+
+        idx = 0
         for medivac in medivacs:
             if wounded_units.exists:
-                wounded_unit = wounded_units.closest_to(medivac)
+                if wounded_units[idx].health_percentage == 1.0:
+                    idx += 1
+                wounded_unit = wounded_units[idx]
+                print('지금 치료하는 애: ', wounded_unit, wounded_unit.health_percentage)
                 actions.append(medivac(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))
 
         await self.do_actions(actions)
