@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--bot1',
         type=str,
-        default='bots.nc4',
+        default='bots.nc5_example',
         help='bot 1 (player 1) 설정')
     parser.add_argument(
         '--bot2',
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # 옵션
     parser.add_argument(
         '--realtime',
-        action='store_false',
+        action='store_true',
         help='false일 때는 빠르게 게임이 실행됨')
     parser.add_argument(
         '--render',
