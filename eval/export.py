@@ -1,29 +1,40 @@
 
 import csv
+import os
 from datetime import datetime
 
-import numpy as np
-from IPython import embed
-
+import matplotlib
+import matplotlib.font_manager
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import pandas as pd
 import scipy.linalg as la
+from IPython import embed
 
 from . import config
 
+matplotlib.rc('font', family="NanumMyeongjo")
+# matplotlib.rc('font', family="Noto Sans Mono CJK KR")  # sudo apt install  fonts-noto-cjk
+matplotlib.font_manager._rebuild()
 FIG_SIZE = (13, 13)
 
 
 def export_results(config):
 
-    df = pd.read_csv(
-        config.csv_file, 
-        names=['no', 'p1', 'p2', 'map', 'p1_score', 'p2_score', 'error', 'play_time']
-    )
+    df = pd.read_csv(config.csv_file, names=config.csv_columns)
 
     # p1과 p2가 같은 봇이면 제외
     # df = df[df['p1'] != df['p2']] 
+
+    # 현재 봇 목록에 없으면 제외
+    xs = list(config.teams.keys())
+    df = df[df['p1'].apply(lambda x: x in xs) | df['p2'].apply(lambda x: x in xs)]
+
+    # 이번주 실시한 최근 게임만 선택
+    df = df[df['no'] > df['no'].max() - config.rounds]
+    round_start = df['no'].max() - config.rounds + 1
+    round_end = df['no'].max()
 
     #
     # 승률
@@ -204,7 +215,7 @@ def export_results(config):
         C, pi, ranks = get_ranks(total_win_raito, use_inf_alpha=True, inf_alpha_eps=0.01)
     else:
         C, pi, ranks = get_ranks(total_win_raito, alpha=config.args.alpha)
-    draw_response_graph(config, names, C, pi, ranks)
+    draw_response_graph(config, names, C, pi, ranks, total_win_raito)
 
     # 
     # Elo 계산
@@ -214,9 +225,7 @@ def export_results(config):
     #
     # README.rst 파일 업데이트
     #
-    n_played_rounds = df.shape[0]
-    n_total_rounds = len(names) ** 2 * config.max_rounds
-    write_readme(config, n_played_rounds, n_total_rounds)
+    write_readme(config, round_start, round_end)
 
 
 def get_ranks(win_ratio, alpha=10, use_inf_alpha=False, inf_alpha_eps=0.01):
@@ -280,7 +289,7 @@ def get_ranks(win_ratio, alpha=10, use_inf_alpha=False, inf_alpha_eps=0.01):
     return C, pi, ranks
  
 
-def draw_response_graph(config, names, C, pi, ranks): 
+def draw_response_graph(config, names, C, pi, ranks, win_ratio): 
 
     # print ranks
     for rank, (score, strategy) in enumerate(sorted(ranks, reverse=True)):
@@ -295,30 +304,40 @@ def draw_response_graph(config, names, C, pi, ranks):
     df_ranks.to_csv(config.log_dir / 'rank.csv')
  
     edges = list()
+    edge_ws = list()
     for s, name_s in enumerate(names):
+        cnt = 0
         for r, name_r in enumerate(names):
             if s != r:  # s == r 인 경우 생략
                 if C[s, r] >= 1 / len(names):  # 전이확률이 평균보다 작으면 생략
                     name_s_ = f'{name_s}\n{pi[s]:.3f}'
                     name_r_ = f'{name_r}\n{pi[r]:.3f}'
                     edges.append((name_s_, name_r_, C[s, r]))
- 
+                    edge_ws.append(C[s, r])
+                    cnt += 1
+
     DG = nx.DiGraph()
     DG.add_weighted_edges_from(edges)
  
-    options = {
-        'node_color': 'grey',
-        'node_size': 12000,
-        'edge_color': 'black',
-        'with_labels': True, 
-        'edge_labels': {(u, v): d["weight"] for u, v, d in DG.edges(data=True)}
-    }
+    edge_ws = np.array(edge_ws)
+    edge_ws = (edge_ws - edge_ws.min() + 1e-6) / (edge_ws.max() - edge_ws.min() + 1e-6)
+
+    options = dict(
+        node_color=pi[[names.index(node.split('\n')[0]) for node in DG.nodes]],
+        cmap='summer',
+        # vmax=1.0,
+        # vmin=0.0,
+        node_size=12000,
+        arrowsize=25,
+        edge_color=edge_ws,
+        # edge_cmap=plt.cm.Greys,
+        with_labels=True, 
+        font_family='NanumMyeongjo',
+    )
+    pos = nx.shell_layout(DG)
 
     fig, ax = plt.subplots(figsize=(13, 13))
-    # pos = nx.spring_layout(DG)
-    pos = nx.planar_layout(DG)
     nx.draw(DG, pos=pos, **options)
-    nx.draw_networkx_edge_labels(DG, pos=pos, **options)
     plt.savefig(config.fig_dir / 'C.png')
     plt.clf()
 
@@ -336,15 +355,16 @@ def update_elo_rating(config):
         else:
             return 10
     
-    df = pd.read_csv(
-        config.csv_file, 
-        names=['no', 'p1', 'p2', 'map', 'p1_score', 'p2_score', 'error', 'play_time']
-    )
+    df = pd.read_csv(config.csv_file, names=config.csv_columns)
+
+    # 현재 봇 목록에 없으면 제외
+    xs = list(config.teams.keys())
+    df = df[df['p1'].apply(lambda x: x in xs) | df['p2'].apply(lambda x: x in xs)]
 
     names = list(sorted(config.teams.keys()))
     elo_ratings = {name: [config.init_elo_rating] for name in names}
 
-    for i in range(df.shape[0]):
+    for i in df.index:
         row = df.loc[i]
         if row['p1'] != row['p2']:
             old_p1_elo = elo_ratings[row['p1']][-1]
@@ -360,8 +380,10 @@ def update_elo_rating(config):
             
     max_x = max(len(vs) for vs in elo_ratings.values())
     fig, ax = plt.subplots(figsize=FIG_SIZE)
+    
     for name in names:
-        ax.plot(elo_ratings[name], label=name)
+        xs = np.arange(max_x - len(elo_ratings[name]), max_x)
+        ax.plot(xs, elo_ratings[name], label=name)
         ax.text(max_x + 10, elo_ratings[name][-1], name)
     ax.set_xlim(0, max_x + 20)
     ax.legend(loc=2)
@@ -370,7 +392,7 @@ def update_elo_rating(config):
     plt.clf()
 
 
-def write_readme(config, n_played_rounds, n_total_rounds):
+def write_readme(config, round_start, round_end):
 
     def csv_to_table(filename, title):
         buff = f"""
@@ -408,24 +430,17 @@ NCF2020 결과
    * - 시작시간
      - 현재시간
      - 경과시간
-     - 진행률
+     - 게임 번호
    * - {config.t_start.isoformat()}
      - {t_current.isoformat()}
      - {t_current - config.t_start}
-     - {n_played_rounds / n_total_rounds:.3f}
-
-**Elo rating**
-
-- https://en.wikipedia.org/wiki/Chess_rating_system
-- K: 10~25, C=400
-
-.. figure:: fig/elo.png
-   :figwidth: 200
+     - {round_start}부터 {round_end}까지
 
 **결과 요약**
 
 {summary_table}
 
+- 게임번호 {round_start}부터 {round_end}까지 결과(최근 게임 결과)만 사용함
 - win ratio: 전체 승률
 - #wins (pn): 플레이어 n으로 승리한 횟수
 - #games (pn): 플레이어 n으로 플레이한 횟수
@@ -434,8 +449,20 @@ NCF2020 결과
 - player_time: 평균 게임 플레이 시간
 
 
+**Elo rating**
+
+.. figure:: fig/elo.png
+   :figwidth: 200
+
+- 현재까지 진행한 모든 게임 결과를 사용함
+- https://en.wikipedia.org/wiki/Chess_rating_system
+- K: 10~25, C=400
+
+
 기타 분석자료
 -----------------
+
+- 게임번호 {round_start}부터 {round_end}까지 결과(최근 게임 결과)만 사용함
 
 **플레이어 1으로 플레이 했을 때 승률**
 
@@ -475,6 +502,10 @@ NCF2020 결과
 
 """
         f.write(content)
+
+    # RST -> HTML
+    # pandoc README.rst -f rst -t html -s -o README.html
+    os.system(f"pandoc {config.out_dir}/README.rst -f rst -t html -s -o {config.out_dir}/README.html")
 
 
 if __name__ == '__main__':
