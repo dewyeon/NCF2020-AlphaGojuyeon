@@ -25,16 +25,15 @@ from sc2.player import Bot, Computer
 from termcolor import cprint
 from tqdm import tqdm, trange
 
-
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.DEBUG)
 
 
-def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path, verbose):
+def run_play_game(config, bot1, bot2, map_name, realtime, timeout, replay_path, log_path, verbose):
     # TODO: 시간초과 검사
     # TODO: 예외처리
     # TODO: 시간측정
-    cmd = f'python -m eval.play_game --bot1={bot1} --bot2={bot2} --map_name={map_name} --realtime={realtime}'
+    cmd = f'python -m eval.play_game --bot_dir={config.bot_dir} --bot1={bot1} --bot2={bot2} --map_name={map_name} --realtime={realtime}'
     if replay_path is not None:
          cmd += f' --replay_path={replay_path}'
 
@@ -82,7 +81,9 @@ def run_play_game(bot1, bot2, map_name, realtime, timeout, replay_path, log_path
     return result
 
 
-def play_game(bot1, bot2, map_name, realtime, replay_path):
+def play_game(bot_dir, bot1, bot2, map_name, realtime, replay_path):
+
+    sys.path.insert(0, str(Path(bot_dir).absolute()))
 
     try:
         game_map = maps.get(map_name)
@@ -92,7 +93,7 @@ def play_game(bot1, bot2, map_name, realtime, replay_path):
 
     # bot 초기화
     bots = list()
-    for bot_path in (bot1, bot2):
+    for player_no, bot_path in enumerate([bot1, bot2]):
         try:
             if len(bot_path) == 4 and bot_path.lower().startswith('com'):
                 # bot 경로 시작이 com으로 시작하면 기본 AI를 사용함
@@ -111,6 +112,12 @@ def play_game(bot1, bot2, map_name, realtime, replay_path):
                 bot_ai = bot_cls()
                 bot = Bot(Race.Terran, bot_ai)
             bots.append(bot)
+        except AttributeError:
+            import traceback
+            logger.error(f"bot 클래스를 임포트 할 수 없음: {bot_path}")
+            logger.error(f'INFO:root:Result for player {player_no + 1} - Defeat')
+            traceback.print_exc()
+            exit(1)
         except ImportError:
             import traceback
             logger.error(f"bot 클래스를 임포트 할 수 없음: {bot_path}")
@@ -124,7 +131,7 @@ def play_game(bot1, bot2, map_name, realtime, replay_path):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('NC Fellowship 2020-play_game')
-    # 작업 목록
+    parser.add_argument('--bot_dir', type=str)
     parser.add_argument('--bot1', type=str)
     parser.add_argument('--bot2', type=str)
     parser.add_argument('--map_name', type=str, default='NCF-2020-v4')
@@ -132,4 +139,4 @@ if __name__ == '__main__':
     parser.add_argument('--replay_path', type=str, default=None)
     args = parser.parse_args()
 
-    play_game(args.bot1, args.bot2, args.map_name, args.realtime, args.replay_path)
+    play_game(args.bot_dir, args.bot1, args.bot2, args.map_name, args.realtime, args.replay_path)
