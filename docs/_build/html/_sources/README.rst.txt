@@ -115,7 +115,7 @@ Windows와 마찬가지로 ~/StarCraftII/Maps가 없다면 직접 만들어줘�
    $ wget http://blzdistsc2-a.akamaihd.net/Linux/SC2.4.10.zip  
    $
    $ # 압축해제(암호: iagreetotheeula)
-   $ sudo apt get install unzip
+   $ sudo apt install unzip
    $ unzip ~/SC2.4.10.zip -d ~/  
    $
    $ # 실행파일에 실행 권한 부여

@@ -23,6 +23,7 @@ sc2minigame 튜토리얼
 * :doc:`예제 2. Simple 2: 적응형 build-order </bots/nc2_simple2/README>`
 * :doc:`예제 3. Simple 3: 집결지 </bots/nc3_simple3/README>`
 * :doc:`예제 4. Simple PPO: 강화학습 예 </bots/nc4_simple_ppo/README>`
+* :doc:`예제 5. Nuke Bot: 스킬 사용 예 </bots/nc5_nuke_bot/README>`
 * :doc:`평가 시스템 및 제출 방식 </eval/README>`
 
 .. toctree::
@@ -37,6 +38,7 @@ sc2minigame 튜토리얼
    예제 2. Simple 2: 적응형 build-order <bots/nc2_simple2/README.rst>
    예제 3. Simple 3: 집결지 <bots/nc3_simple3/README.rst>
    예제 4. Simple PPO: 분산학습 예 <bots/nc4_simple_ppo/README.rst>
+   예제 5. Nuke Bot: 스킬 사용 예 <bots/nc5_nuke_bot/README.rst>
    평가 시스템 및 제출 방식 <eval/README.rst>
 
 
