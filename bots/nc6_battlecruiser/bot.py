@@ -41,8 +41,8 @@ class Bot(sc2.BotAI):
         actions = list() # 이번 step에 실행할 액션 목록
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
-        cc_abilities = await self.get_available_abilities(cc)
-        battlecruisers = self.units(UnitTypeId.BATTLECRUISER)
+        # cc_abilities = await self.get_available_abilities(cc)
+        # battlecruisers = self.units(UnitTypeId.BATTLECRUISER)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
