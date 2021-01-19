@@ -41,14 +41,15 @@ class Bot(sc2.BotAI):
         actions = list() # 이번 step에 실행할 액션 목록
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
+        combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC])
         # cc_abilities = await self.get_available_abilities(cc)
-        # banshees = self.units(UnitTypeId.BANSHEE)
+        # reapers = self.units(UnitTypeId.REAPER)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
-        if self.can_afford(UnitTypeId.BANSHEE) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 밴시 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
-            actions.append(cc.train(UnitTypeId.BANSHEE))
+        if self.can_afford(UnitTypeId.REAPER) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+            # 사신 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            actions.append(cc.train(UnitTypeId.REAPER))
             self.evoked[(cc.tag, 'train')] = self.time
 
         # 유닛 명령
@@ -62,14 +63,24 @@ class Bot(sc2.BotAI):
                 target = enemy_cc
             else:
                 target = enemy_unit
-            
-            if unit.type_id is UnitTypeId.BANSHEE:       
-                # 은폐
-                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
-                    if await self.can_cast(unit, AbilityId.BEHAVIOR_CLOAKON_BANSHEE):
-                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
-                
+
+            if combat_units.amount > 10:
                 actions.append(unit.attack(target))
+            else:
+                defense_position = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                actions.append(unit.attack(defense_position))         
+            
+            if unit.type_id is UnitTypeId.REAPER:
+                reaper_abilities = await self.get_available_abilities(unit)
+                # print(reaper_abilities)
+                
+                # KD8 지뢰 (일정 시간 후 폭발하여 5의 피해를 줌)
+                actions.append(unit(AbilityId.KD8CHARGE_KD8CHARGE, target=target))
+
+                # 체력 50퍼센트 이하가 되면 전투 피하기 - 자동 체력 회복              
+                if unit.health_percentage < 0.5:
+                    actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
+
 
         await self.do_actions(actions)
  

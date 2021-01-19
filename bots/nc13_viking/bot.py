@@ -41,14 +41,15 @@ class Bot(sc2.BotAI):
         actions = list() # 이번 step에 실행할 액션 목록
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
+        combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC])
         # cc_abilities = await self.get_available_abilities(cc)
-        # banshees = self.units(UnitTypeId.BANSHEE)
+        # vikings = self.units(UnitTypeId.VIKINGFIGHTER)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
-        if self.can_afford(UnitTypeId.BANSHEE) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 밴시 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
-            actions.append(cc.train(UnitTypeId.BANSHEE))
+        if self.can_afford(UnitTypeId.VIKINGFIGHTER) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+            # 바이킹 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            actions.append(cc.train(UnitTypeId.VIKINGFIGHTER))
             self.evoked[(cc.tag, 'train')] = self.time
 
         # 유닛 명령
@@ -60,16 +61,34 @@ class Bot(sc2.BotAI):
             # 적 사령부와 가장 가까운 적 유닛중 더 가까운 것을 목표로 설정
             if unit.distance_to(enemy_cc) < unit.distance_to(enemy_unit):
                 target = enemy_cc
+                flying_enemy = False
             else:
                 target = enemy_unit
-            
-            if unit.type_id is UnitTypeId.BANSHEE:       
-                # 은폐
-                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
-                    if await self.can_cast(unit, AbilityId.BEHAVIOR_CLOAKON_BANSHEE):
-                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
-                
+                try:
+                    if target.is_flying:
+                        flying_enemy = True
+                    else:
+                        flying_enemy = False
+                except:
+                    flying_enemy = False
+
+            if combat_units.amount > 5:
                 actions.append(unit.attack(target))
+            else:
+                target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                actions.append(unit.attack(target))            
+            
+            if unit.type_id is UnitTypeId.VIKINGFIGHTER:
+                viking_abilities = await self.get_available_abilities(unit)
+                print(viking_abilities)
+                # 돌격 모드로 전환(지상 유닛만 공격 가능)
+                print('target', target, 'is_flying=', flying_enemy)
+                if not flying_enemy:
+                    actions.append(unit(AbilityId.MORPH_VIKINGASSAULTMODE))
+                else:   # 공중 유닛만 공격 가능
+                    actions.append(unit(AbilityId.MORPH_VIKINGFIGHTERMODE))                
+                
+
 
         await self.do_actions(actions)
  

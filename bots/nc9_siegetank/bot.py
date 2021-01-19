@@ -41,13 +41,13 @@ class Bot(sc2.BotAI):
         actions = list() # 이번 step에 실행할 액션 목록
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
-        cc_abilities = await self.get_available_abilities(cc)
-        tanks = self.units(UnitTypeId.SIEGETANK)
+        # cc_abilities = await self.get_available_abilities(cc)
+        # tanks = self.units(UnitTypeId.SIEGETANK)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
         if self.can_afford(UnitTypeId.SIEGETANK) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 밴시 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            # 공성전차 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
             actions.append(cc.train(UnitTypeId.SIEGETANK))
             self.evoked[(cc.tag, 'train')] = self.time
 
@@ -68,7 +68,7 @@ class Bot(sc2.BotAI):
                 # 공성 모드로 전환(사거리 증가 및 범위 공격)
                 if 7 < unit.distance_to(target) < 13:
                     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
-                    
+
                 actions.append(unit.attack(target))
 
         await self.do_actions(actions)
