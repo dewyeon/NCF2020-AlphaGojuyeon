@@ -41,13 +41,13 @@ class Bot(sc2.BotAI):
         actions = list() # 이번 step에 실행할 액션 목록
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
-        cc_abilities = await self.get_available_abilities(cc)
-        thors = self.units(UnitTypeId.THOR)
+        # cc_abilities = await self.get_available_abilities(cc)
+        # thors = self.units(UnitTypeId.THOR)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
         if self.can_afford(UnitTypeId.THOR) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 밴시 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            # 토르 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
             actions.append(cc.train(UnitTypeId.THOR))
             self.evoked[(cc.tag, 'train')] = self.time
 
@@ -75,7 +75,7 @@ class Bot(sc2.BotAI):
                 thor_ability = await self.get_available_abilities(unit)
                 # print(thor_ability)
                 # 고충격 탄두 활성화 (공중 유닛 단일 공격)
-                # print('targe', target, 'is_flying=', flying_enemy)
+                # print('target', target, 'is_flying=', flying_enemy)
                 if flying_enemy:
                     actions.append(unit(AbilityId.MORPH_THORHIGHIMPACTMODE))
                 else:   # 재블린 미사일
