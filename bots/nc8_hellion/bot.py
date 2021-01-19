@@ -42,13 +42,13 @@ class Bot(sc2.BotAI):
 
         cc = self.units(UnitTypeId.COMMANDCENTER).first
         combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC])
-        cc_abilities = await self.get_available_abilities(cc)
-        hellions = self.units(UnitTypeId.HELLION)
+        # cc_abilities = await self.get_available_abilities(cc)
+        # hellions = self.units(UnitTypeId.HELLION)
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
         # 사령부 명령
         if self.can_afford(UnitTypeId.HELLION) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 밴시 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            # 화염차 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
             actions.append(cc.train(UnitTypeId.HELLION))
             self.evoked[(cc.tag, 'train')] = self.time
 
