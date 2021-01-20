@@ -101,14 +101,19 @@ class Bot(sc2.BotAI):
             if unit.type_id is UnitTypeId.SIEGETANK:                
                 # 공성 모드로 전환 (사거리 증가 및 범위 공격)
                 # print('target=', target, 'distance=', unit.distance_to(target))
-                if 7 < unit.distance_to(target) < 13:
+                # if 7 < unit.distance_to(target) < 13:
+                #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                # else:
+                #     actions.append(unit.attack(target))
+
+                # 적 사령부가 사거리에 들어오면 공성 모드로 전환
+                if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
                     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 else:
-                    actions.append(unit.attack(target)) 
+                    actions.append(unit.attack(target))
 
             # Siege Mode 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
-                # if not await self.can_cast(unit, AbilityId.ATTACK_ATTACK):
                 if unit.distance_to(target) > 13:
                     actions.append(unit(AbilityId.UNSIEGE_UNSIEGE))
                 else:
