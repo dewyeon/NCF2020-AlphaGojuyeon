@@ -65,7 +65,16 @@ class Bot(sc2.BotAI):
 
         elif ravens.amount > 0:
             raven_abilities = await self.get_available_abilities(ravens.first)
-            # print(raven_abilities)
+            print(raven_abilities)
+
+            enemy_unit = self.enemy_start_locations[0]
+            if self.known_enemy_units.exists:
+                enemy_unit = self.known_enemy_units.closest_to(ravens.first)  # 가장 가까운 적 유닛   
+            # 적 사령부와 가장 가까운 적 유닛중 더 가까운 것을 목표로 설정
+            if ravens.first.distance_to(self.enemy_cc) < ravens.first.distance_to(enemy_unit):
+                target = self.enemy_cc
+            else:
+                target = enemy_unit
             
             if AbilityId.BUILDAUTOTURRET_AUTOTURRET in raven_abilities and ravens.first.is_idle:
                 # 자동포탑 생산 가능하고 밤까마귀가 idle 상태이면, 자동포탑 설치
@@ -73,6 +82,12 @@ class Bot(sc2.BotAI):
                     actions.append(ravens.first(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
                 else:
                     actions.append(ravens.first(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+            
+            try:
+                if target.is_cloaked:
+                    actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
+            except:
+                pass
                 
                     
         await self.do_actions(actions)
