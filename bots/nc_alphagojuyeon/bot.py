@@ -1,22 +1,20 @@
 
-__author__ = '고주연 (juyon98@korea.ac.kr)'
+__author__ = '고주연 (juyon98@korea.ac.kr), 홍은수 (deltaori0@korea.ac.kr)'
 
 import time
+
 import sc2
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.buff_id import BuffId
+from sc2.position import Point2
+
 
 class Bot(sc2.BotAI):
     """
-    빌드오더(해병 5, 불곰 2, 의료선 1) 실행 후,
-    유닛 명령 생성
-    - 해병은 10명 이상 생성되면 적 유닛과 적 사령부 중 더 가까운 곳을 향해 모여서 이동
-        적 유닛 또는 사령부까지 거리가 15미만이고, 
-        본인 체력이 50% 이상인 경우 스팀팩 사용
-    - 불곰은 해병과 모두 동일하나 5명 이상 생성시 이동
-    - 의료선은 자신에게 가장 가까운 체력이 100% 미만인 해병 중 
-        체력이 가장 낮은 순으로 해병을 치료함
+    초반 전략 : 비용이 싼 유닛(해병, 의료선) 15개로 초반부 시간 벌기
+    중반부 전략 : 공성 전차를 활용한 중반부 싸움
+    후반부 전략 : 밤까마귀를 활용한 방어선 생성, 전투 순양함(야마토 포, 전술 차원 도약)을 사용하여 적 사령부 공격, 유령 전술핵 사용
     """
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -28,118 +26,172 @@ class Bot(sc2.BotAI):
         """
         self.build_order = list()
         self.evoked = dict()
-
-    async def on_step(self, iteration: int):
-        actions = list()
-        #
-        # 빌드 오더 생성
-        #
-        if len(self.build_order) == 0:
-            for _ in range(5):
+        
+        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
+        for _ in range(2):
+            for _ in range(12):
                 self.build_order.append(UnitTypeId.MARINE)
-            for _ in range(2):
-                self.build_order.append(UnitTypeId.MARAUDER)
             self.build_order.append(UnitTypeId.MEDIVAC)
+
+        # 중반 빌드 오더 (해병: 2, 공성 전차 : 1, 화염차 : 1 - 다섯 번 반복)
+        for _ in range(5):
+            for _ in range(2):
+                self.build_order.append(UnitTypeId.MARINE)
+            self.build_order.append(UnitTypeId.SIEGETANK)
+            self.build_order.append(UnitTypeId.HELLION)
+
+    async def on_step(self, iteration: int):       
+        actions = list()
+
+        combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
+        tank_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.MARINE, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
+        end_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED,  UnitTypeId.MARINE]) # 후반부 유닛
+        wounded_units = self.units.filter(
+            lambda u: u.is_biological and u.health_percentage < 1.0
+        )  # 체력이 100% 이하인 유닛 검색
+        enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
+
+        # 후반부 빌드 오더 (밤까마귀: 1, 전투 순양함: 2, 유령: 1, 전술핵: 1)
+        self.build_order.append(UnitTypeId.RAVEN)
+        for _ in range(2):
+            self.build_order.append(UnitTypeId.BATTLECRUISER)
+        self.build_order.append(UnitTypeId.GHOST)
+        self.build_order.append(AbilityId.BUILD_NUKE)
 
         #
         # 사령부 명령 생성
         #
-        cmdctrs = self.units(UnitTypeId.COMMANDCENTER)
-        cmdctrs = cmdctrs.idle
-        if cmdctrs.exists:
-            cmdctr = cmdctrs.first
-            if self.can_afford(self.build_order[0]) and self.time - self.evoked.get((cmdctr.tag, 'train'), 0) > 1.0:
-                actions.append(cmdctr.train(self.build_order[0]))
-                del self.build_order[0]
-                self.evoked[(cmdctr.tag), 'train'] = self.time
+        cc = self.units(UnitTypeId.COMMANDCENTER).first
+        if self.can_afford(self.build_order[0]) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+            # 해당 유닛 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            actions.append(cc.train(self.build_order[0]))  # 첫 번째 유닛 생산 명령 
+            del self.build_order[0]  # 빌드오더에서 첫 번째 유닛 제거
+            self.evoked[(cc.tag, 'train')] = self.time
 
         #
-        # 해병 명령 생성
+        # 유닛 명령 생성
         #
-        marines = self.units.of_type(UnitTypeId.MARINE)
-
-        for marine in marines:
-            enemy_startloc = self.enemy_start_locations[0]
+        for unit in self.units.not_structure:  # 건물이 아닌 유닛만 선택
             enemy_unit = self.enemy_start_locations[0]
             if self.known_enemy_units.exists:
-                enemy_unit = self.known_enemy_units.closest_to(marine)
-        
-            if marine.distance_to(enemy_startloc) < marine.distance_to(enemy_unit):
-                target = enemy_startloc
+                enemy_unit = self.known_enemy_units.closest_to(unit)  # 가장 가까운 적 유닛
+
+            # 적 사령부와 가장 가까운 적 유닛중 더 가까운 것을 목표로 설정
+            if unit.distance_to(enemy_cc) < unit.distance_to(enemy_unit):
+                target = enemy_cc
             else:
                 target = enemy_unit
+
+            # 해병 명령
+            if unit.type_id is UnitTypeId.MARINE:
+                if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                    actions.append(unit.attack(target))
+                    use_stimpack = True
+                else:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+                    use_stimpack = False
+
+                if use_stimpack and unit.distance_to(target) < 15:
+                    # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
+                    if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
+                        # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
+                        if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
+                            # 1초 이전에 스팀팩을 사용한 적이 없음
+                            actions.append(unit(AbilityId.EFFECT_STIM))
+                            self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+            
+            # 화염차 명령
+            if unit.type_id is UnitTypeId.HELLION:
+                
+                if combat_units.amount > 5:
+                    actions.append(unit.attack(target))
+                else:
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+
+            # 공성 전차 명령
+            if unit.type_id is UnitTypeId.SIEGETANK: 
+                if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                    actions.append(unit.attack(target))
+                else:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+                # 공성 모드로 전환 (사거리 증가 및 범위 공격)
+                # print('target=', target, 'distance=', unit.distance_to(target))
+
+                # 사거리 안에 들어오면 바로 공성 모드로 전환
+                # if 7 < unit.distance_to(target) < 13:
+                #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                # else:
+                #     actions.append(unit.attack(target))
+
+                # 적 사령부가 사거리에 들어왔을 때 공성 모드로 전환
+                if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
+                    actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                else:
+                    actions.append(unit.attack(target))
+
+            # Siege Mode 공성 전차 명령
+            if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
+                if unit.distance_to(target) > 13:
+                    actions.append(unit(AbilityId.UNSIEGE_UNSIEGE))
+                else:
+                    actions.append(unit.attack(target))
+            
+            # 전투 순양함 명령
+            if unit.type_id is UnitTypeId.BATTLECRUISER:       
+                # 적 사령부로 전술 차원 도약
+                if await self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc):
+                    actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc))
+                
+                actions.append(unit.attack(target))
+                
+                # 야마토 포 시전 가능하면 시전
+                if await self.can_cast(unit, AbilityId.YAMATO_YAMATOGUN, target=target):
+                    actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
+
+            # 의료선 명령
+            if unit.type_id is UnitTypeId.MEDIVAC:
+                if wounded_units.exists:
+                    wounded_unit = wounded_units.closest_to(unit)  # 가장 가까운 체력이 100% 이하인 유닛
+                    actions.append(unit(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))  # 유닛 치료 명령
+                else:
+                    # 회복시킬 유닛이 없으면, 전투 그룹 중앙에서 대기
+                    try:
+                        actions.append(unit.move(combat_units.center))
+                    except:
+                        actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
+            
+            # 유령 명령
+            if unit.type_id is UnitTypeId.GHOST:
+                ghost_abilities = await self.get_available_abilities(unit)
+                if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
+                # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                    actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
+            
+            # 밤까마귀 명령
+            if unit.type_id is UnitTypeId.RAVEN:
+                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
+                # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
+                if cc.distance_to(enemy_unit) <= 3:
+                    if enemy_cc==Point2(Point2((95.5, 31.5))):
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                    else:
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
+                
+                # 방해 매트릭스 (은폐 유닛 드러냄)
+                try:
+                    if target.is_cloaked:
+                        actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
+                except:
+                    pass
         
-            if marines.amount > 10:
-                actions.append(marine.attack(target))
-                use_stimpack = True
-            else:
-                target = self.start_location + 0.25 * (enemy_startloc.position - self.start_location)
-                actions.append(marine.attack(target))
-                use_stimpack = False
-            
-            if use_stimpack and marine.distance_to(target) < 15:
-                if not marine.has_buff(BuffId.STIMPACK) and marine.health_percentage > 0.5:
-                    if self.time - self.evoked.get((marine.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
-                        actions.append(marine(AbilityId.EFFECT_STIM))
-                        self.evoked[(marine.tag, AbilityId.EFFECT_STIM)] = self.time
-            
-        #
-        # 불곰 명령 생성
-        #
-        marauders = self.units.of_type(UnitTypeId.MARAUDER)
-        for marauder in marauders:
-            enemy_startloc = self.enemy_start_locations[0]
-            enemy_unit = self.enemy_start_locations[0]
-            if self.known_enemy_units.exists:
-                enemy_unit = self.known_enemy_units.closest_to(marauder)
         
-            if marauder.distance_to(enemy_startloc) < marauder.distance_to(enemy_unit):
-                target = enemy_startloc
-            else:
-                target = enemy_unit
-            
-            if marauders.amount > 5:
-                actions.append(marauder.attack(target))
-                use_stimpack = True
-            else:
-                target = self.start_location + 0.25 * (enemy_startloc.position - self.start_location)
-                actions.append(marauder.attack(target))
-                use_stimpack = False
-            
-            if use_stimpack and marauder.distance_to(target) < 15:
-                if not marauder.has_buff(BuffId.STIMPACK) and marauder.health_percentage > 0.5:
-                    if self.time - self.evoked.get((marauder.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
-                        actions.append(marauder(AbilityId.EFFECT_STIM))
-                        self.evoked[(marauder.tag, AbilityId.EFFECT_STIM)] = self.time
-
-        #
-        # 의료선 명령 생성
-        #
-        medivacs = self.units(UnitTypeId.MEDIVAC)
-
-        wounded_units = self.units.filter(
-            lambda u: u.is_biological and u.health_percentage < 1.0
-        )
-        # 생명력 퍼센티지가 낮은 순서대로 정렬
-        wounded_units.sort(key=lambda x : x.health_percentage)
-
-        # print(wounded_units)
-        # for wu in wounded_units:
-        #     print(wu, wu.health_percentage)
-
-        # for medivac in medivacs:
-        #     if wounded_units.exists:
-        #         wounded_unit = wounded_units.closest_to(medivac)
-        #         actions.append(medivac(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))
-
-        idx = 0
-        for medivac in medivacs:
-            if wounded_units.exists:
-                if wounded_units[idx].health_percentage == 1.0:
-                    idx += 1
-                wounded_unit = wounded_units[idx]
-                print('지금 치료하는 애: ', wounded_unit, wounded_unit.health_percentage)
-                actions.append(medivac(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))
-
         await self.do_actions(actions)
 
