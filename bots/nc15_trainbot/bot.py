@@ -7,6 +7,7 @@ import sc2
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.buff_id import BuffId
+from sc2.position import Point2
 
 
 class Bot(sc2.BotAI):
@@ -154,5 +155,21 @@ class Bot(sc2.BotAI):
                     actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                     actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
             
+            # 밤까마귀 명령
+            if unit.type_id is UnitTypeId.RAVEN:
+                # 수정 필요
+                if enemy_cc==Point2(Point2((95.5, 31.5))):
+                    actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
+                else:
+                    actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                
+                # 방해 매트릭스 (은폐 유닛 드러냄)
+                try:
+                    if target.is_cloaked:
+                        actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
+                except:
+                    pass
+        
+        
         await self.do_actions(actions)
 
