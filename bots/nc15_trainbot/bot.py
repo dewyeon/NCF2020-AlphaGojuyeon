@@ -26,9 +26,9 @@ class Bot(sc2.BotAI):
         self.build_order = list()
         self.evoked = dict()
 
-        # 초반 빌드 오더 생성 (해병: 12, 의료선: 3)
-        for _ in range(3):
-            for _ in range(4):
+        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
+        for _ in range(4):
+            for _ in range(6):
                 self.build_order.append(UnitTypeId.MARINE)
             self.build_order.append(UnitTypeId.MEDIVAC)
 
@@ -39,8 +39,8 @@ class Bot(sc2.BotAI):
     async def on_step(self, iteration: int):       
         actions = list()
 
-        combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED, UnitTypeId.UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
-        tank_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.MARINE, UnitTypeId.UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
+        combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
+        tank_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.MARINE, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
         wounded_units = self.units.filter(
             lambda u: u.is_biological and u.health_percentage < 1.0
         )  # 체력이 100% 이하인 유닛 검색
@@ -55,15 +55,12 @@ class Bot(sc2.BotAI):
         #
         # 사령부 명령 생성
         #
-        ccs = self.units(UnitTypeId.COMMANDCENTER)  # 전체 유닛에서 사령부 검색
-        ccs = ccs.idle  # 실행중인 명령이 없는 사령부 검색
-        if ccs.exists:  # 사령부가 하나이상 존재할 경우
-            cc = ccs.first  # 첫번째 사령부 선택
-            if self.can_afford(self.build_order[0]) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-                # 해당 유닛 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
-                actions.append(cc.train(self.build_order[0]))  # 첫 번째 유닛 생산 명령 
-                del self.build_order[0]  # 빌드오더에서 첫 번째 유닛 제거
-                self.evoked[(cc.tag, 'train')] = self.time
+        cc = self.units(UnitTypeId.COMMANDCENTER).first
+        if self.can_afford(self.build_order[0]) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+            # 해당 유닛 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
+            actions.append(cc.train(self.build_order[0]))  # 첫 번째 유닛 생산 명령 
+            del self.build_order[0]  # 빌드오더에서 첫 번째 유닛 제거
+            self.evoked[(cc.tag, 'train')] = self.time
 
         #
         # 유닛 명령 생성
@@ -81,8 +78,8 @@ class Bot(sc2.BotAI):
 
             # 해병 명령
             if unit.type_id is UnitTypeId.MARINE:
-                if combat_units.amount >= 15:
-                    # 전투가능한 유닛(해병, 의료선) 수가 15를 넘으면 적 본진으로 공격
+                if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
                     actions.append(unit.attack(target))
                     use_stimpack = True
                 else:
@@ -109,13 +106,25 @@ class Bot(sc2.BotAI):
                 else:
                     actions.append(unit.attack(target)) 
 
-            # Siege Mode 공성 전차
+            # Siege Mode 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
                 # if not await self.can_cast(unit, AbilityId.ATTACK_ATTACK):
                 if unit.distance_to(target) > 13:
                     actions.append(unit(AbilityId.UNSIEGE_UNSIEGE))
                 else:
                     actions.append(unit.attack(target))
+            
+            # 전투 순양함 명령
+            if unit.type_id is UnitTypeId.BATTLECRUISER:       
+                # 적 사령부로 전술 차원 도약
+                if await self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc):
+                    actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc))
+                
+                actions.append(unit.attack(target))
+                
+                # 야마토 포 시전 가능하면 시전
+                if await self.can_cast(unit, AbilityId.YAMATO_YAMATOGUN, target=target):
+                    actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
 
             # 의료선 명령
             if unit.type_id is UnitTypeId.MEDIVAC:
@@ -124,7 +133,10 @@ class Bot(sc2.BotAI):
                     actions.append(unit(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))  # 유닛 치료 명령
                 else:
                     # 회복시킬 유닛이 없으면, 전투 그룹 중앙에서 대기
-                    actions.append(unit.move(combat_units.center))
+                    try:
+                        actions.append(unit.move(combat_units.center))
+                    except:
+                        actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
             
         await self.do_actions(actions)
 
