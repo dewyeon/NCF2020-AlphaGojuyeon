@@ -42,6 +42,7 @@ class Bot(sc2.BotAI):
 
         combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
         tank_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.MARINE, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST])
+        end_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANK, UnitTypeId.SIEGETANKSIEGED,  UnitTypeId.MARINE]) # 후반부 유닛
         wounded_units = self.units.filter(
             lambda u: u.is_biological and u.health_percentage < 1.0
         )  # 체력이 100% 이하인 유닛 검색
@@ -100,7 +101,14 @@ class Bot(sc2.BotAI):
                             self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
                 
             # 공성 전차 명령
-            if unit.type_id is UnitTypeId.SIEGETANK:                
+            if unit.type_id is UnitTypeId.SIEGETANK: 
+                if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                    actions.append(unit.attack(target))
+                else:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
                 # 공성 모드로 전환 (사거리 증가 및 범위 공격)
                 # print('target=', target, 'distance=', unit.distance_to(target))
 
