@@ -151,8 +151,8 @@ class Bot(sc2.BotAI):
                 ghost_abilities = await self.get_available_abilities(unit)
                 if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
                 # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
-                actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
-                actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                    actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
             
         await self.do_actions(actions)
 
