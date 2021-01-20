@@ -32,6 +32,9 @@ class Bot(sc2.BotAI):
                 self.build_order.append(UnitTypeId.MARINE)
             self.build_order.append(UnitTypeId.MEDIVAC)
 
+        # 중반 빌드 오더 (공성 전차 : 5)
+        for _ in range(5):
+            self.build_order.append(UnitTypeId.SIEGETANK)
 
     async def on_step(self, iteration: int):       
         actions = list()
@@ -43,9 +46,11 @@ class Bot(sc2.BotAI):
         )  # 체력이 100% 이하인 유닛 검색
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
-        # 중반 빌드 오더 (공성 전차 : 5)
-        for _ in range(5):
-            self.build_order.append(UnitTypeId.SIEGETANK)
+        # 후반부 빌드 오더 (밤까마귀: 1, 전투 순양함 : 2, 유령: 1)
+        self.build_order.append(UnitTypeId.RAVEN)
+        for _ in range(2):
+            self.build_order.append(UnitTypeId.BATTLECRUISER)
+        self.build_order.append(UnitTypeId.GHOST)
 
         #
         # 사령부 명령 생성
@@ -96,19 +101,10 @@ class Bot(sc2.BotAI):
                             self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
                 
             # 공성 전차 명령
-            if unit.type_id is UnitTypeId.SIEGETANK:
-                # if tank_units.amount >= 5:
-                #     # 공성 전차 수가 5를 넘으면 적 본진으로 공격
-                #     actions.append(unit.attack(target))
-                # else:
-                #     # 적 사령부 방향에 유닛 집결
-                #     target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
-                #     actions.append(unit.attack(target))
-                
+            if unit.type_id is UnitTypeId.SIEGETANK:                
                 # 공성 모드로 전환 (사거리 증가 및 범위 공격)
-                print('target=', target, 'distance=', unit.distance_to(target))
+                # print('target=', target, 'distance=', unit.distance_to(target))
                 if 7 < unit.distance_to(target) < 13:
-                    print('siege mode')
                     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 else:
                     actions.append(unit.attack(target)) 
