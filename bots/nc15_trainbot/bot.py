@@ -27,15 +27,18 @@ class Bot(sc2.BotAI):
         self.build_order = list()
         self.evoked = dict()
 
-        # 초반 빌드 오더 생성 (해병: 6, 의료선: 1 - 네 번 반복)
+        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
         for _ in range(2):
             for _ in range(12):
                 self.build_order.append(UnitTypeId.MARINE)
             self.build_order.append(UnitTypeId.MEDIVAC)
 
-        # 중반 빌드 오더 (공성 전차 : 5)
+        # 중반 빌드 오더 (해병: 2, 공성 전차 : 1, 화염차 : 1 - 다섯 번 반복)
         for _ in range(5):
+            for _ in range(2):
+                self.build_order.append(UnitTypeId.MARINE)
             self.build_order.append(UnitTypeId.SIEGETANK)
+            self.build_order.append(UnitTypeId.HELLION)
 
     async def on_step(self, iteration: int):       
         actions = list()
