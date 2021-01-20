@@ -27,9 +27,9 @@ class Bot(sc2.BotAI):
         self.build_order = list()
         self.evoked = dict()
 
-        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
-        for _ in range(4):
-            for _ in range(6):
+        # 초반 빌드 오더 생성 (해병: 6, 의료선: 1 - 네 번 반복)
+        for _ in range(2):
+            for _ in range(12):
                 self.build_order.append(UnitTypeId.MARINE)
             self.build_order.append(UnitTypeId.MEDIVAC)
 
