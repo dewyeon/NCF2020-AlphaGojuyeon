@@ -26,7 +26,7 @@ class Bot(sc2.BotAI):
         """
         self.build_order = list()
         self.evoked = dict()
-
+        
         # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
         for _ in range(2):
             for _ in range(12):
@@ -102,7 +102,16 @@ class Bot(sc2.BotAI):
                             # 1초 이전에 스팀팩을 사용한 적이 없음
                             actions.append(unit(AbilityId.EFFECT_STIM))
                             self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+            
+            # 화염차 명령
+            if unit.type_id is UnitTypeId.HELLION:
                 
+                if combat_units.amount > 5:
+                    actions.append(unit.attack(target))
+                else:
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+
             # 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANK: 
                 if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
@@ -168,11 +177,13 @@ class Bot(sc2.BotAI):
             
             # 밤까마귀 명령
             if unit.type_id is UnitTypeId.RAVEN:
-                # 수정 필요
-                if enemy_cc==Point2(Point2((95.5, 31.5))):
-                    actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-                else:
-                    actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
+                # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
+                if cc.distance_to(enemy_unit) <= 3:
+                    if enemy_cc==Point2(Point2((95.5, 31.5))):
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                    else:
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
                 
                 # 방해 매트릭스 (은폐 유닛 드러냄)
                 try:
