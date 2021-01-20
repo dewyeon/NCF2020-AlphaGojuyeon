@@ -46,11 +46,12 @@ class Bot(sc2.BotAI):
         )  # 체력이 100% 이하인 유닛 검색
         enemy_cc = self.enemy_start_locations[0]  # 적 시작 위치
 
-        # 후반부 빌드 오더 (밤까마귀: 1, 전투 순양함 : 2, 유령: 1)
+        # 후반부 빌드 오더 (밤까마귀: 1, 전투 순양함: 2, 유령: 1, 전술핵: 1)
         self.build_order.append(UnitTypeId.RAVEN)
         for _ in range(2):
             self.build_order.append(UnitTypeId.BATTLECRUISER)
         self.build_order.append(UnitTypeId.GHOST)
+        self.build_order.append(AbilityId.BUILD_NUKE)
 
         #
         # 사령부 명령 생성
@@ -101,12 +102,14 @@ class Bot(sc2.BotAI):
             if unit.type_id is UnitTypeId.SIEGETANK:                
                 # 공성 모드로 전환 (사거리 증가 및 범위 공격)
                 # print('target=', target, 'distance=', unit.distance_to(target))
+
+                # 사거리 안에 들어오면 바로 공성 모드로 전환
                 # if 7 < unit.distance_to(target) < 13:
                 #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 # else:
                 #     actions.append(unit.attack(target))
 
-                # 적 사령부가 사거리에 들어오면 공성 모드로 전환
+                # 적 사령부가 사거리에 들어왔을 때 공성 모드로 전환
                 if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
                     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 else:
@@ -142,6 +145,14 @@ class Bot(sc2.BotAI):
                         actions.append(unit.move(combat_units.center))
                     except:
                         actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
+            
+            # 유령 명령
+            if unit.type_id is UnitTypeId.GHOST:
+                ghost_abilities = await self.get_available_abilities(unit)
+                if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
+                # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
             
         await self.do_actions(actions)
 
