@@ -188,7 +188,7 @@ class Bot(sc2.BotAI):
                 # 방해 매트릭스 (은폐 유닛 드러냄)
                 try:
                     if target.is_cloaked:
-                        actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
                 except:
                     pass
         
