@@ -89,7 +89,7 @@ class Bot(sc2.BotAI):
         self.build_order = list()
 
         # self.economy_strategy = EconomyStrategy.MARINE.value
-        self.army_strategy = ArmyStrategy.DEFENSE
+        self.army_strategy = ArmyStrategy.DEFENSE_SIMPLE
 
         self.cc = self.units(UnitTypeId.COMMANDCENTER).first  # 전체 유닛에서 사령부 검색
         # (32.5, 31.5) or (95.5, 31.5)
@@ -104,11 +104,9 @@ class Bot(sc2.BotAI):
         # data = (JOIN, game_id)
         # self.sock.send_multipart([pickle.dumps(d) for d in data])
         
-        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
-        for _ in range(2):
-            for _ in range(12):
-                self.build_order.append(UnitTypeId.MARINE)
-            self.build_order.append(UnitTypeId.MEDIVAC)
+        # 초반 빌드 오더 생성 (해병: 30)
+        for _ in range(30):
+            self.build_order.append(UnitTypeId.MARINE)
 
         # 중반 빌드 오더 (해병: 2, 공성 전차 : 1, 화염차 : 1 - 다섯 번 반복)
         for _ in range(5):
@@ -138,13 +136,29 @@ class Bot(sc2.BotAI):
         #
         # 사령부 명령 생성
         #
-        cc = self.units(UnitTypeId.COMMANDCENTER).first
-        if self.can_afford(self.build_order[0]) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
-            # 해당 유닛 생산 가능하고, 마지막 명령을 발행한지 1초 이상 지났음
-            actions.append(cc.train(self.build_order[0]))  # 첫 번째 유닛 생산 명령 
-            del self.build_order[0]  # 빌드오더에서 첫 번째 유닛 제거
-            self.evoked[(cc.tag, 'train')] = self.time
-        
+        cc = self.units(UnitTypeId.COMMANDCENTER).first        
+        next_unit = self.build_order[0]
+        cost = self._game_data.calculate_ability_cost(cc.train(next_unit))
+
+        if self.vespene >= cost.vespene:
+            # print('gas는 충분!')
+            if self.can_afford(next_unit) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+                actions.append(cc.train(next_unit))
+                del self.build_order[0]
+                self.evoked[(cc.tag, 'train')] = self.time
+            # else:
+                # print('광물 부족')
+        else:
+            # print('gas 부족')
+            if self.can_afford(UnitTypeId.MARINE) and self.time - self.evoked.get((cc.tag, 'train'), 0) > 1.0:
+                actions.append(cc.train(UnitTypeId.MARINE))
+                self.evoked[(cc.tag, 'train')] = self.time
+
+        # 사령부 체력이 깎였을 경우 지게로봇 생성
+        if cc.health_percentage < 1.0:
+            mule_loc = self.start_location - 0.05 * (enemy_cc.position - self.start_location)
+            actions.append(cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+
         #
         # 유닛 명령 생성
         #
@@ -161,43 +175,61 @@ class Bot(sc2.BotAI):
 
             # 해병 명령
             if unit.type_id is UnitTypeId.MARINE:
-                if self.army_strategy is ArmyStrategy.OFFENSE and combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
-                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
-                    actions.append(unit.attack(target))
-                    use_stimpack = True
-                else:# ArmyStrateygy.DEFENSE
+                if self.army_strategy is ArmyStrategy.OFFENSE_LOW or self.army_strategy is ArmyStrategy.OFFENSE_MID or self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                        # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                        actions.append(unit.attack(target))
+                        use_stimpack = True
+                elif self.army_strategy is ArmyStrategy.DEFENSE_SIMPLE or self.army_strategy is ArmyStrategy.DEFENSE_SIEGETANK:
                     # 적 사령부 방향에 유닛 집결
                     target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
                     use_stimpack = False
 
-                if self.army_strategy is ArmyStrategy.OFFENSE and use_stimpack and unit.distance_to(target) < 15:
-                    # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
-                    if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
-                        # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
-                        if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
-                            # 1초 이전에 스팀팩을 사용한 적이 없음
-                            actions.append(unit(AbilityId.EFFECT_STIM))
-                            self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+                if self.army_strategy is ArmyStrategy.OFFENSE_LOW or self.army_strategy is ArmyStrategy.OFFENSE_MID or self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    if  use_stimpack and unit.distance_to(target) < 15:
+                        # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
+                        if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
+                            # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
+                            if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
+                                # 1초 이전에 스팀팩을 사용한 적이 없음
+                                actions.append(unit(AbilityId.EFFECT_STIM))
+                                self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
             
             # 화염차 명령
             if unit.type_id is UnitTypeId.HELLION:
-                
-                if self.army_strategy is ArmyStrategy.OFFENSE and combat_units.amount > 5:
-                    actions.append(unit.attack(target))
-                else:
+                if self.army_strategy is ArmyStrategy.OFFENSE_MID or self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    if combat_units.amount > 5:
+                        actions.append(unit.attack(target))
+                elif self.army_strategy is ArmyStrategy.DEFENSE_SIEGETANK or self.army_strategy is ArmyStrategy.DEFENSE_SIMPLE:
                     target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
 
             # 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANK: 
-                if self.army_strategy is ArmyStrategy.OFFENSE and combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
-                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                if self.army_strategy is ArmyStrategy.OFFENSE_LOW or self.army_strategy is ArmyStrategy.OFFENSE_MID or self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    if combat_units.amount + tank_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                        # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                        actions.append(unit.attack(target))
+
+                elif self.army_strategy is ArmyStrategy.DEFENSE_SIEGETANK:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.15 * (enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
+
+                    # print('현재=', unit.position, '목표=', target, '거리=', unit.distance_to(target))
+                    if unit.distance_to(target) < 3.0:
+                        actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 else:
                     # 적 사령부 방향에 유닛 집결
                     target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
+                    
+                    #  적 사령부가 사거리에 들어왔을 때 공성 모드로 전환
+                    if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
+                        actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                    else:
+                        actions.append(unit.attack(target))
                 # 공성 모드로 전환 (사거리 증가 및 범위 공격)
                 # print('target=', target, 'distance=', unit.distance_to(target))
 
@@ -206,13 +238,7 @@ class Bot(sc2.BotAI):
                 #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                 # else:
                 #     actions.append(unit.attack(target))
-
-                # 적 사령부가 사거리에 들어왔을 때 공성 모드로 전환
-                if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
-                    actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
-                else:
-                    actions.append(unit.attack(target))
-
+                
             # Siege Mode 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
                 if unit.distance_to(target) > 13:
@@ -222,38 +248,30 @@ class Bot(sc2.BotAI):
             
             # 전투 순양함 명령
             if unit.type_id is UnitTypeId.BATTLECRUISER:       
-                # 적 사령부로 전술 차원 도약
-                if await self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc):
-                    actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc))
+                # 전투순양함이 2개 이상일 때 적 사령부로 전술 차원 도약
+                if self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    if battlecruiser_units.amount >= 2:
+                        if await self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc):
+                          actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=enemy_cc))
+                        # 야마토 포 시전 가능하면 시전
+                        if await self.can_cast(unit, AbilityId.YAMATO_YAMATOGUN, target=target):
+                            actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
+                        actions.append(unit.attack(target))
+                    else:
+                        defense_pos = self.start_location + 0.05 * (enemy_cc.position - self.start_location)
+                        actions.append(unit.attack(defense_pos))
                 
-                actions.append(unit.attack(target))
-                
-                # 야마토 포 시전 가능하면 시전
-                if await self.can_cast(unit, AbilityId.YAMATO_YAMATOGUN, target=target):
-                    actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
-
-            # 의료선 명령
-            if unit.type_id is UnitTypeId.MEDIVAC:
-                if wounded_units.exists:
-                    wounded_unit = wounded_units.closest_to(unit)  # 가장 가까운 체력이 100% 이하인 유닛
-                    actions.append(unit(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))  # 유닛 치료 명령
-                else:
-                    # 회복시킬 유닛이 없으면, 전투 그룹 중앙에서 대기
-                    try:
-                        actions.append(unit.move(combat_units.center))
-                    except:
-                        actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
-            
             # 유령 명령
             if unit.type_id is UnitTypeId.GHOST:
-                ghost_abilities = await self.get_available_abilities(unit)
-                if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
-                # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
-                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
-                    actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
+                if self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
+                    ghost_abilities = await self.get_available_abilities(unit)
+                    if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
+                    # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                        actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
             
             # 밤까마귀 명령
-            if unit.type_id is UnitTypeId.RAVEN:
+            if unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.OFFENSE_HIGH:
                 # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
                 # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
                 if cc.distance_to(enemy_unit) <= 3:
@@ -269,6 +287,10 @@ class Bot(sc2.BotAI):
                 except:
                     pass
 
+            # 지게로봇 명령
+            if unit.type_id is UnitTypeId.MULE:
+                actions.append(unit(AbilityId.EFFECT_REPAIR_MULE, target=cc))
+        
         await self.do_actions(actions)
 
     def set_strategy(self):
