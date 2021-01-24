@@ -110,7 +110,7 @@ class Bot(sc2.BotAI):
             self.last_step_time = self.time
         
         self.combat_units = self.units.exclude_type(
-            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.SIEGETANKSIEGED, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST, UnitTypeId.MULE]
+            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST, UnitTypeId.MULE]
         )
         self.wounded_units = self.units.filter(
             lambda u: u.is_biological and u.health_percentage < 1.0
@@ -131,7 +131,12 @@ class Bot(sc2.BotAI):
         state[3] = min(1.0, self.time / 360)
         state[4] = min(1.0, self.state.score.total_damage_dealt_life / 2500)
         for unit in self.units.not_structure:
-            state[5 + EconomyStrategy.to_index[unit.type_id]] += 1
+            id = unit.type_id
+            if id is UnitTypeId.SIEGETANKSIEGED:
+                id = UnitTypeId.SIEGETANK
+            if id is UnitTypeId.VIKINGASSAULT:
+                id = UnitTypeId.VIKINGFIGHTER
+            state[5 + EconomyStrategy.to_index[id]] += 1
         state = state.reshape(1, -1)
 
         # NN
@@ -301,9 +306,44 @@ class Bot(sc2.BotAI):
                 # 방해 매트릭스 (은폐 유닛 드러냄)
                 try:
                     if target.is_cloaked:
-                        actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
                 except:
                     pass
+
+            # 밴시 명령
+            if unit.type_id is UnitTypeId.BANSHEE and self.army_strategy is ArmyStrategy.OFFENSE:
+                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
+                
+                actions.append(unit.attack(target))
+            
+            # 토르 명령
+            if unit.type_id is UnitTypeId.THOR and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_THORHIGHIMPACTMODE))
+                    else:
+                        actions.append(unit(AbilityId.MORPH_THOREXPLOSIVEMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
+            
+            # 바이킹 명령
+            if unit.type_id is UnitTypeId.VIKINGFIGHTER and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if not target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_VIKINGASSAULTMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
+            
+            if unit.type_id is UnitTypeId.VIKINGASSAULT and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_VIKINGFIGHTERMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
 
             # 지게로봇 명령
             if unit.type_id is UnitTypeId.MULE:
