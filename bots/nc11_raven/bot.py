@@ -110,7 +110,7 @@ class Bot(sc2.BotAI):
                         # 전투순양함이 없는데 밤까마귀가 있는 경우 + 공격 모드일 때
                         # 밤까마귀를 은신 유닛 탐지에 이용, 다른 아군 공격 유닛들과 함께 전투 유닛 중앙에 배치
                         if combat_units.amount >= 15:
-                            actions.append(unit(AbilityId.SCAN_MOVE, target=combat_units.center))
+                            actions.append(unit(AbilityId.MOVE_MOVE, target=combat_units.center))
 
                 elif unit.type_id is UnitTypeId.RAVEN:
                     # 방해 매트릭스 이용하여 아군 사령부 쪽에서 유닛(특히 전투순양함) 방어

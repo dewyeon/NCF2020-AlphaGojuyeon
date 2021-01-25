@@ -43,7 +43,11 @@ class Bot(sc2.BotAI):
         super().__init__()
 
     def on_start(self):
-        pass
+        self.cc = self.units(UnitTypeId.COMMANDCENTER).first
+        if self.start_location.distance_to(Point2((32.5, 31.5))) < 5.0:
+            self.enemy_cc = Point2(Point2((95.5, 31.5)))
+        else:
+            self.enemy_cc = Point2(Point2((32.5, 31.5)))
 
     async def on_step(self, iteration: int):
         """
@@ -66,9 +70,13 @@ class Bot(sc2.BotAI):
                 actions.append(cc(AbilityId.BUILD_NUKE))
 
             ghost_abilities = await self.get_available_abilities(ghosts.first)
+            print(ghost_abilities)
             if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and ghosts.first.is_idle:
                 # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
                 actions.append(ghosts.first(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                 actions.append(ghosts.first(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
+            
+            if AbilityId.EMP_EMP in ghost_abilities and ghosts.first.is_idle:
+                actions.append(ghosts.first(AbilityId.EMP_EMP, target=self.enemy_cc))
 
         await self.do_actions(actions)
