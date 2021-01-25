@@ -167,6 +167,9 @@ class Bot(sc2.BotAI):
         #
         actions = list()
         next_unit = self.economy_strategy
+        # 사용하지 않는 유닛 : 불곰, 사신, 토르, 의료선, 바이킹
+        if next_unit in (UnitTypeId.REAPER, UnitTypeId.MARAUDER, UnitTypeId.THOR, UnitTypeId.MEDIVAC, UnitTypeId.VIKINGFIGHTER):
+            next_unit = UnitTypeId.MARINE
         cost = self._game_data.calculate_ability_cost(self.cc.train(next_unit))
 
         if self.vespene >= cost.vespene:
@@ -326,9 +329,12 @@ class Bot(sc2.BotAI):
                     pass
 
             # 밴시 명령
-            if unit.type_id is UnitTypeId.BANSHEE and self.army_strategy is ArmyStrategy.OFFENSE:
+            if unit.type_id is UnitTypeId.BANSHEE:
                 if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
                     actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
+                
+                if unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) > 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKOFF_BANSHEE))
                 
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     if self.combat_units.amount >= 15:
@@ -395,6 +401,18 @@ class Bot(sc2.BotAI):
             # 지게로봇 명령
             if unit.type_id is UnitTypeId.MULE:
                 actions.append(unit(AbilityId.EFFECT_REPAIR_MULE, target=self.cc))
+            
+            # 의료선 명령
+            if unit.type_id is UnitTypeId.MEDIVAC:
+                if wounded_units.exists:
+                    wounded_unit = wounded_units.closest_to(unit)  # 가장 가까운 체력이 100% 이하인 유닛
+                    actions.append(unit(AbilityId.MEDIVACHEAL_HEAL, wounded_unit))  # 유닛 치료 명령
+                else:
+                    # 회복시킬 유닛이 없으면, 전투 그룹 중앙에서 대기
+                    try:
+                        actions.append(unit.move(combat_units.center))
+                    except:
+                        actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
          
         return actions
     
