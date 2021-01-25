@@ -189,7 +189,7 @@ class Bot(sc2.BotAI):
                     actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                     actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
 
-                if self.can_cast(AbilityId.EMP_EMP) and unit.is_idle:
+                if self.can_cast(unit, AbilityId.EMP_EMP) and unit.is_idle:
                     enemy_ravens = self.known_enemy_units.filter(lambda unit: unit.name == "Raven")
                     if enemy_ravens:
                         enemy_raven = enemy_ravens[0]

@@ -136,6 +136,8 @@ class Bot(sc2.BotAI):
                 id = UnitTypeId.SIEGETANK
             if id is UnitTypeId.VIKINGASSAULT:
                 id = UnitTypeId.VIKINGFIGHTER
+            if id is UnitTypeId.NUKE:
+                continue
             state[5 + EconomyStrategy.to_index[id]] += 1
         state = state.reshape(1, -1)
 
@@ -313,7 +315,7 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                         actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
 
-                    if self.can_cast(AbilityId.EMP_EMP) and unit.is_idle:
+                    if self.can_cast(unit, AbilityId.EMP_EMP) and unit.is_idle:
                         enemy_ravens = self.known_enemy_units.filter(lambda unit: unit.name == "Raven")
                         if enemy_ravens:
                             enemy_raven = enemy_ravens[0]
