@@ -189,6 +189,13 @@ class Bot(sc2.BotAI):
         if self.cc.health_percentage < 1.0:
             mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
             actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+        
+        # 유령이 하나 이상 존재하고 전술핵이 없을 경우 생산
+        ghosts = self.units(UnitTypeId.GHOST)
+        nukes = self.units(UnitTypeId.NUKE)
+        if ghosts.amount > 0 and nukes.amount == 0:
+            actions.append(self.cc(AbilityId.BUILD_NUKE))
+
          
         return actions
         
@@ -305,7 +312,6 @@ class Bot(sc2.BotAI):
             if unit.type_id is UnitTypeId.GHOST:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     # ghost_abilities = self.get_available_abilities(unit)
-                    # if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
                     if unit.is_idle:
                     # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
                         actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
@@ -336,9 +342,8 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
                 else:
                     actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
-            '''
-            자동 포탑은 개발 잠시 보류중
 
+            # 자동 포탑은 개발 잠시 보류중
             # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
                 # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
                 if self.cc.distance_to(enemy_unit) <= 3:
