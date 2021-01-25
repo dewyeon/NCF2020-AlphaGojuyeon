@@ -27,11 +27,12 @@ class Bot(sc2.BotAI):
         self.build_order = list()
         self.evoked = dict()
         
-        # 초반 빌드 오더 생성 (해병: 12, 의료선: 1 - 두 번 반복)
+        # 초반 빌드 오더 생성 (해병 10, 밴시 2, 밤까마귀 1)
         for _ in range(2):
-            for _ in range(12):
+            for _ in range(10):
                 self.build_order.append(UnitTypeId.MARINE)
-            self.build_order.append(UnitTypeId.MEDIVAC)
+            self.build_order.append(UnitTypeId.BANSHEE)
+        self.build_order.append(UnitTypeId.RAVEN)
 
         # 중반 빌드 오더 (해병: 2, 공성 전차 : 1, 화염차 : 1 - 다섯 번 반복)
         for _ in range(5):
@@ -74,7 +75,17 @@ class Bot(sc2.BotAI):
         for unit in self.units.not_structure:  # 건물이 아닌 유닛만 선택
             enemy_unit = self.enemy_start_locations[0]
             if self.known_enemy_units.exists:
-                enemy_unit = self.known_enemy_units.closest_to(unit)  # 가장 가까운 적 유닛
+                known_enemy_units = self.known_enemy_units.sorted(lambda e: (e.health_percentage, unit.distance_to(e)))
+                # print('-------------------------------------')
+                # print('유닛 : ', unit)
+                # print('지상 사거리=', unit.ground_range, '공중 사거리=', unit.air_range)
+
+                if not unit.type_id in ([UnitTypeId.MEDIVAC, UnitTypeId.RAVEN]):
+                    for e in known_enemy_units:
+                        if e.can_be_attacked:   # revealed
+                            enemy_unit = e
+                            # print('최종 공격할 대상:', enemy_unit, '체력=', enemy_unit.health_percentage, '거리=', enemy_unit.health_percentage)
+                            break
 
             # 적 사령부와 가장 가까운 적 유닛중 더 가까운 것을 목표로 설정
             if unit.distance_to(enemy_cc) < unit.distance_to(enemy_unit):
@@ -121,14 +132,6 @@ class Bot(sc2.BotAI):
                     # 적 사령부 방향에 유닛 집결
                     target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
-                # 공성 모드로 전환 (사거리 증가 및 범위 공격)
-                # print('target=', target, 'distance=', unit.distance_to(target))
-
-                # 사거리 안에 들어오면 바로 공성 모드로 전환
-                # if 7 < unit.distance_to(target) < 13:
-                #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
-                # else:
-                #     actions.append(unit.attack(target))
 
                 # 적 사령부가 사거리에 들어왔을 때 공성 모드로 전환
                 if unit.distance_to(enemy_cc) < 13 and unit.health_percentage > 0.3: 
@@ -177,6 +180,25 @@ class Bot(sc2.BotAI):
             
             # 밤까마귀 명령
             if unit.type_id is UnitTypeId.RAVEN:
+                enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
+                if enemy_battlecruisers:
+                    battlecruiser = enemy_battlecruisers[0]
+                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
+                else:
+                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
+                
+                if combat_units.amount >= 15:
+                    actions.append(unit.attack(target))
+                else:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+
+                try:
+                    actions.append(unit.attack(target))
+                except:
+                    actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
+
                 # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
                 # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
                 if cc.distance_to(enemy_unit) <= 3:
@@ -185,13 +207,19 @@ class Bot(sc2.BotAI):
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
                 
-                # 방해 매트릭스 (은폐 유닛 드러냄)
-                try:
-                    if target.is_cloaked:
-                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
-                except:
-                    pass
-        
-        
-        await self.do_actions(actions)
+            # 밴시 명령
+            if unit.type_id is UnitTypeId.BANSHEE:
+                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
+                    
+                if unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) > 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKOFF_BANSHEE))
 
+                if combat_units.amount >= 15:
+                    # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                    actions.append(unit.attack(target))  
+                else:
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+
+        await self.do_actions(actions)
