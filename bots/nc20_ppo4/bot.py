@@ -304,12 +304,12 @@ class Bot(sc2.BotAI):
             # 유령 명령
             if unit.type_id is UnitTypeId.GHOST:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.can_cast(AbilityId.BUILD_NUKE):
-                    # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
+                    if self.can_cast(cc, AbilityId.BUILD_NUKE):
+                        # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
                         actions.append(cc(AbilityId.BUILD_NUKE))
 
                     if self.can_cast(unit, AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc) and unit.is_idle:
-                    # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                        # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
                         actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                         actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
 

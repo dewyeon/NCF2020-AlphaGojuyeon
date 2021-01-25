@@ -180,7 +180,7 @@ class Bot(sc2.BotAI):
 
             # 유령 명령
             if unit.type_id is UnitTypeId.GHOST:
-                if self.can_cast(AbilityId.BUILD_NUKE):
+                if self.can_cast(cc, AbilityId.BUILD_NUKE):
                     # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
                     actions.append(cc(AbilityId.BUILD_NUKE))
 
