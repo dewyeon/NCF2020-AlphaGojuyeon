@@ -60,8 +60,14 @@ class Bot(sc2.BotAI):
         ravens = self.units(UnitTypeId.RAVEN)
         combat_units = self.units.exclude_type([UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC])
         
+        if combat_units.amount < 6:
+            actions.append(cc.train(UnitTypeId.MARINE))
+
         if ravens.amount == 0:
             actions.append(cc.train(UnitTypeId.RAVEN))
+            if ravens.amount > 0:
+                for _ in range(5):
+                    actions.append(cc.train(UnitTypeId.MARINE))
 
         elif ravens.amount > 0:
             raven_abilities = await self.get_available_abilities(ravens.first)
@@ -75,7 +81,7 @@ class Bot(sc2.BotAI):
                 target = self.enemy_cc
             else:
                 target = enemy_unit
-            
+            '''
             if AbilityId.BUILDAUTOTURRET_AUTOTURRET in raven_abilities and ravens.first.is_idle:
                 # 자동포탑 생산 가능하고 밤까마귀가 idle 상태이면, 자동포탑 설치
                 if self.enemy_cc==Point2(Point2((95.5, 31.5))):
@@ -88,6 +94,33 @@ class Bot(sc2.BotAI):
                     actions.append(ravens.first(AbilityId.SCAN_MOVE, target=target.position))
             except:
                 pass
-                
+            '''
+
+            # 밤까마귀 명령
+            for unit in self.units.not_structure: 
+                if unit.type_id is UnitTypeId.RAVEN:
+                    # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
+                    enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
+                    if enemy_battlecruisers:
+                        battlecruiser = enemy_battlecruisers[0]
+                        # 전투순양함이 아군 사령부쪽에 있지 않을때 대장갑 미사일 이용하기
+                        if cc.distance_to(battlecruiser) > 3:
+                            actions.append(unit(AbilityId.EFFECT_ANTIARMORMISSILE, target=battlecruiser.position))
+                    else:
+                        # 전투순양함이 없는데 밤까마귀가 있는 경우 + 공격 모드일 때
+                        # 밤까마귀를 은신 유닛 탐지에 이용, 다른 아군 공격 유닛들과 함께 전투 유닛 중앙에 배치
+                        if combat_units.amount >= 15:
+                            actions.append(unit(AbilityId.SCAN_MOVE, target=combat_units.center))
+
+                elif unit.type_id is UnitTypeId.RAVEN:
+                    # 방해 매트릭스 이용하여 아군 사령부 쪽에서 유닛(특히 전투순양함) 방어
+                    enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
+                    if enemy_battlecruisers:
+                        # 전투순양함이 아군 사령부 거리 3 이내이면 방해 매트릭스 이용하기
+                        battlecruiser = enemy_battlecruisers[0]
+                        if cc.distance_to(battlecruiser) <= 3:
+                            actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
+                    else:
+                        actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))    
                     
         await self.do_actions(actions)
