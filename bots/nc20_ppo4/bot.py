@@ -320,13 +320,7 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-                
-                # 방해 매트릭스 (은폐 유닛 드러냄)
-                try:
-                    if target.is_cloaked:
-                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
-                except:
-                    pass
+
 
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE:
