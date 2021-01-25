@@ -177,35 +177,46 @@ class Bot(sc2.BotAI):
                 # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
                     actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                     actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
+
+            # 유령 명령
+            if unit.type_id is UnitTypeId.GHOST:
+                if self.can_cast(AbilityId.BUILD_NUKE):
+                    # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
+                    actions.append(cc(AbilityId.BUILD_NUKE))
+
+                if self.can_cast(unit, AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc) and unit.is_idle:
+                    # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                    actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=enemy_cc))
+
+                if self.can_cast(AbilityId.EMP_EMP) and unit.is_idle:
+                    enemy_ravens = self.known_enemy_units.filter(lambda unit: unit.name == "Raven")
+                    if enemy_ravens:
+                        enemy_raven = enemy_ravens[0]
+                        actions.append(unit(AbilityId.EMP_EMP, target=enemy_raven))
+                    else:
+                        actions.append(unit(AbilityId.EMP_EMP, target=enemy_cc))
             
             # 밤까마귀 명령
             if unit.type_id is UnitTypeId.RAVEN:
+                # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
                 enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
                 if enemy_battlecruisers:
                     battlecruiser = enemy_battlecruisers[0]
-                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
+                    # 전투순양함이 아군 사령부쪽에 있지 않을때 대장갑 미사일 이용하기
+                    if cc.distance_to(battlecruiser) > 3:
+                        actions.append(unit(AbilityId.EFFECT_ANTIARMORMISSILE, target=battlecruiser.position))
+                    else: # 전투순양함이 아군 사령부 거리 3 이내이면 방해 매트릭스 이용하기
+                        actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
                 else:
-                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
-                
-                if combat_units.amount >= 15:
-                    actions.append(unit.attack(target))
-                else:
-                    # 적 사령부 방향에 유닛 집결
-                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))
-
-                try:
-                    actions.append(unit.attack(target))
-                except:
-                    actions.append(unit(AbilityId.MOVE_MOVE, target=cc))
-
-                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
-                # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
-                if cc.distance_to(enemy_unit) <= 3:
-                    if enemy_cc==Point2(Point2((95.5, 31.5))):
-                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                    # 전투순양함이 없는데 밤까마귀가 있는 경우 + 공격 모드일 때
+                    # 밤까마귀를 은신 유닛 탐지에 이용, 다른 아군 공격 유닛들과 함께 전투 유닛 중앙에 배치
+                    if combat_units.amount + tank_units.amount >= 15:
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=combat_units.center))
                     else:
-                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
+                        actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
+                        target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                        actions.append(unit.attack(target))
                 
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE:
@@ -215,7 +226,7 @@ class Bot(sc2.BotAI):
                 if unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) > 10:
                     actions.append(unit(AbilityId.BEHAVIOR_CLOAKOFF_BANSHEE))
 
-                if combat_units.amount >= 15:
+                if combat_units.amount + tank_units.amount>= 15:
                     # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
                     actions.append(unit.attack(target))  
                 else:

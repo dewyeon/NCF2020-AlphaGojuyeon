@@ -304,8 +304,6 @@ class Bot(sc2.BotAI):
             # 유령 명령
             if unit.type_id is UnitTypeId.GHOST:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
-                    # ghost_abilities = self.get_available_abilities(unit)
-
                     if self.can_cast(AbilityId.BUILD_NUKE):
                     # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
                         actions.append(cc(AbilityId.BUILD_NUKE))
@@ -348,9 +346,10 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
                 else:
                     actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
-            '''
-            자동 포탑은 개발 잠시 보류중
+                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
 
+            # 자동 포탑은 개발 잠시 보류중
             # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
                 # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
                 if self.cc.distance_to(enemy_unit) <= 3:
@@ -358,7 +357,7 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-            '''
+    
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE:
                 if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
