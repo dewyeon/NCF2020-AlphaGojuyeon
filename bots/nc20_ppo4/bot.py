@@ -310,20 +310,40 @@ class Bot(sc2.BotAI):
             
             # 밤까마귀 명령
             if unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.OFFENSE:
-                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
+                # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
+                enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
+                if enemy_battlecruisers:
+                    battlecruiser = enemy_battlecruisers[0]
+                    # 전투순양함이 아군 사령부쪽에 있지 않을때 대장갑 미사일 이용하기
+                    if self.cc.distance_to(battlecruiser) > 3:
+                        actions.append(unit(AbilityId.EFFECT_ANTIARMORMISSILE, target=battlecruiser.position))
+                else:
+                    # 전투순양함이 없는데 밤까마귀가 있는 경우 + 공격 모드일 때
+                    # 밤까마귀를 은신 유닛 탐지에 이용, 다른 아군 공격 유닛들과 함께 전투 유닛 중앙에 배치
+                    if self.combat_units.amount >= 15:
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=self.combat_units.center))
+
+            elif unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.DEFENSE:
+                # 방해 매트릭스 이용하여 아군 사령부 쪽에서 유닛(특히 전투순양함) 방어
+                enemy_battlecruisers = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
+                if enemy_battlecruisers:
+                    # 전투순양함이 아군 사령부 거리 3 이내이면 방해 매트릭스 이용하기
+                    battlecruiser = enemy_battlecruisers[0]
+                    if self.cc.distance_to(battlecruiser) <= 3:
+                        actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
+                else:
+                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
+            '''
+            자동 포탑은 개발 잠시 보류중
+
+            # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
                 # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
                 if self.cc.distance_to(enemy_unit) <= 3:
                     if self.enemy_cc==Point2(Point2((95.5, 31.5))):
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-                
-                # 방해 매트릭스 (은폐 유닛 드러냄)
-                try:
-                    if target.is_cloaked:
-                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
-                except:
-                    pass
+            '''
 
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE and self.army_strategy is ArmyStrategy.OFFENSE:
