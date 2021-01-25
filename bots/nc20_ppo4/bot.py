@@ -305,12 +305,24 @@ class Bot(sc2.BotAI):
             if unit.type_id is UnitTypeId.GHOST:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     # ghost_abilities = self.get_available_abilities(unit)
-                    # if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
-                    if unit.is_idle:
+
+                    if self.can_cast(AbilityId.BUILD_NUKE):
+                    # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
+                        actions.append(cc(AbilityId.BUILD_NUKE))
+
+                    if self.can_cast(unit, AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc) and unit.is_idle:
                     # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
                         actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
                         actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
-            
+
+                    if self.can_cast(AbilityId.EMP_EMP) and unit.is_idle:
+                        enemy_ravens = self.known_enemy_units.filter(lambda unit: unit.name == "Raven")
+                        if enemy_ravens:
+                            enemy_raven = enemy_ravens[0]
+                            actions.append(unit(AbilityId.EMP_EMP, target=enemy_raven))
+                        else:
+                            actions.append(unit(AbilityId.EMP_EMP, target=self.enemy_cc))
+
             # 밤까마귀 명령
             if unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.OFFENSE:
                 # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
@@ -346,7 +358,7 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-
+            '''
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE:
                 if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
