@@ -136,6 +136,8 @@ class Bot(sc2.BotAI):
                 id = UnitTypeId.SIEGETANK
             if id is UnitTypeId.VIKINGASSAULT:
                 id = UnitTypeId.VIKINGFIGHTER
+            if id is UnitTypeId.NUKE:
+                continue
             state[5 + EconomyStrategy.to_index[id]] += 1
         state = state.reshape(1, -1)
 
