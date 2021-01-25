@@ -346,7 +346,6 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
                         actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
-            '''
 
             # 밴시 명령
             if unit.type_id is UnitTypeId.BANSHEE:
