@@ -346,7 +346,7 @@ class Bot(sc2.BotAI):
                         actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=battlecruiser.position))
                 else:
                     actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=target.position))
-                    target = self.start_location + 0.25 * (enemy_cc.position - self.start_location)
+                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
                     actions.append(unit.attack(target))
 
             # 자동 포탑은 개발 잠시 보류중
