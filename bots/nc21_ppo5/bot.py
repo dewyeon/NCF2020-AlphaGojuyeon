@@ -264,6 +264,7 @@ class Bot(sc2.BotAI):
             # 전투 순양함 명령
             if unit.type_id is UnitTypeId.BATTLECRUISER:       
                 # 전투순양함이 2개 이상일 때 적 사령부로 전술 차원 도약
+                battlecruiser_units = self.units(UnitTypeId.BATTLECRUISER)
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     if battlecruiser_units.amount >= 2:
                         if self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc):
