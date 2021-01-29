@@ -164,7 +164,7 @@ class Bot(sc2.BotAI):
 
         economy_strategy = EconomyStrategy.to_type_id[action // len(ArmyStrategy)]
         army_strategy = ArmyStrategy(action % len(ArmyStrategy))
-        print('next unit =', economy_strategy,'전략=', army_strategy)
+        # print('next unit =', economy_strategy,'전략=', army_strategy)
         return economy_strategy, army_strategy
     
     def train_action(self):
