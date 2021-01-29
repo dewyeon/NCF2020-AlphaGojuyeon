@@ -19,19 +19,17 @@ class CommandType(bytes, Enum):
 
 class EconomyStrategy(Enum):
     MARINE = UnitTypeId.MARINE
-    # MARAUDER = UnitTypeId.MARAUDER
-    # REAPER = UnitTypeId.REAPER
-    # GHOST = UnitTypeId.GHOST
+    MARAUDER = UnitTypeId.MARAUDER
+    REAPER = UnitTypeId.REAPER
+    GHOST = UnitTypeId.GHOST
     HELLION = UnitTypeId.HELLION
     SIEGETANK = UnitTypeId.SIEGETANK
     THOR = UnitTypeId.THOR
-    # MEDIVAC = UnitTypeId.MEDIVAC
+    MEDIVAC = UnitTypeId.MEDIVAC
     VIKINGFIGHTER = UnitTypeId.VIKINGFIGHTER
     BANSHEE = UnitTypeId.BANSHEE
     RAVEN = UnitTypeId.RAVEN
     BATTLECRUISER = UnitTypeId.BATTLECRUISER
-    # NUKE = UnitTypeId.NUKE
-    # MULE = UnitTypeId.MULE
 
 
 EconomyStrategy.to_index = dict()
@@ -56,5 +54,5 @@ class MessageType(Enum):
     EXCEPTION = 1
 
 
-N_FEATURES = 5 + 8
+N_FEATURES = 5 + 12
 N_ACTIONS = len(EconomyStrategy) * len(ArmyStrategy)
