@@ -40,7 +40,7 @@ nest_asyncio.apply()
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(5 + 8, 64)
+        self.fc1 = nn.Linear(5 + 12, 64)
         self.norm1 = nn.LayerNorm(64)
         self.fc2 = nn.Linear(64, 64)
         self.norm2 = nn.LayerNorm(64)
@@ -83,6 +83,7 @@ class Bot(sc2.BotAI):
         self.step_interval = self.step_interval
         self.last_step_time = -self.step_interval
         self.evoked = dict()
+        # self.build_order = list()
 
         self.economy_strategy = EconomyStrategy.MARINE.value
         self.army_strategy = ArmyStrategy.DEFENSE
@@ -109,7 +110,7 @@ class Bot(sc2.BotAI):
             self.last_step_time = self.time
         
         self.combat_units = self.units.exclude_type(
-            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST, UnitTypeId.MULE, UnitTypeId.NUKE]
+            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST, UnitTypeId.MULE]
         )
         self.wounded_units = self.units.filter(
             lambda u: u.is_biological and u.health_percentage < 1.0
@@ -135,12 +136,6 @@ class Bot(sc2.BotAI):
                 id = UnitTypeId.SIEGETANK
             if id is UnitTypeId.VIKINGASSAULT:
                 id = UnitTypeId.VIKINGFIGHTER
-            if id is UnitTypeId.THORAP:
-                id = UnitTypeId.THOR
-            if id is UnitTypeId.MULE:
-                continue
-            # if id is UnitTypeId.NUKE:
-            #     continue
             state[5 + EconomyStrategy.to_index[id]] += 1
         state = state.reshape(1, -1)
 
@@ -164,7 +159,6 @@ class Bot(sc2.BotAI):
 
         economy_strategy = EconomyStrategy.to_type_id[action // len(ArmyStrategy)]
         army_strategy = ArmyStrategy(action % len(ArmyStrategy))
-        print('next unit =', economy_strategy,'전략=', army_strategy)
         return economy_strategy, army_strategy
     
     def train_action(self):
@@ -173,15 +167,20 @@ class Bot(sc2.BotAI):
         #
         actions = list()
         next_unit = self.economy_strategy
-        if self.can_afford(next_unit):
-            if self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
+        cost = self._game_data.calculate_ability_cost(self.cc.train(next_unit))
+
+        if self.vespene >= cost.vespene:
+            # print('gas는 충분!')
+            if self.can_afford(next_unit) and self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
                 actions.append(self.cc.train(next_unit))
                 self.evoked[(self.cc.tag, 'train')] = self.time
-        
-        # 사령부 체력이 깎였을 경우 지게로봇 생성
-        if self.cc.health_percentage < 1.0:
-            mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
-            actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+            # else:
+                # print('광물 부족')
+        else:
+            # print('gas 부족')
+            if self.can_afford(UnitTypeId.MARINE) and self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
+                actions.append(self.cc.train(UnitTypeId.MARINE))
+                self.evoked[(self.cc.tag, 'train')] = self.time
          
         return actions
         
@@ -230,7 +229,7 @@ class Bot(sc2.BotAI):
             # 화염차 명령
             if unit.type_id is UnitTypeId.HELLION:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
+                    if self.combat_units.amount > 5:
                         actions.append(unit.attack(target))
                 elif self.army_strategy is ArmyStrategy.DEFENSE:
                     target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
@@ -245,14 +244,22 @@ class Bot(sc2.BotAI):
 
                 elif self.army_strategy is ArmyStrategy.DEFENSE:
                     # 적 사령부 방향에 유닛 집결
-                    defense_pos = self.start_location + 0.15 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(defense_pos))
+                    target = self.start_location + 0.15 * (self.enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
 
                     # print('현재=', unit.position, '목표=', target, '거리=', unit.distance_to(target))
-                    if unit.distance_to(target) < 13:
+                    if unit.distance_to(target) < 3.0:
                         actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                     else:
                         actions.append(unit.attack(target))
+                # 공성 모드로 전환 (사거리 증가 및 범위 공격)
+                # print('target=', target, 'distance=', unit.distance_to(target))
+
+                # 사거리 안에 들어오면 바로 공성 모드로 전환
+                # if 7 < unit.distance_to(target) < 13:
+                #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                # else:
+                #     actions.append(unit.attack(target))
                 
             # Siege Mode 공성 전차 명령
             if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
@@ -264,7 +271,6 @@ class Bot(sc2.BotAI):
             # 전투 순양함 명령
             if unit.type_id is UnitTypeId.BATTLECRUISER:       
                 # 전투순양함이 2개 이상일 때 적 사령부로 전술 차원 도약
-                battlecruiser_units = self.units(UnitTypeId.BATTLECRUISER)
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     if battlecruiser_units.amount >= 2:
                         if self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc):
@@ -274,141 +280,80 @@ class Bot(sc2.BotAI):
                             actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
                         actions.append(unit.attack(target))
                     else:
-                        target = self.start_location + 0.05 * (self.enemy_cc.position - self.start_location)
-                        actions.append(unit.attack(target))
-                if self.army_strategy is ArmyStrategy.DEFENSE:
-                    target = self.start_location + 0.05 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))
-
+                        defense_pos = self.start_location + 0.05 * (self.enemy_cc.position - self.start_location)
+                        actions.append(unit.attack(defense_pos))
+                
             # 유령 명령
-            # if unit.type_id is UnitTypeId.GHOST:
-            #     nukes = self.units(UnitTypeId.NUKE)
-            #     if nukes.amount == 0:
-            #         if self.can_afford(UnitTypeId.NUKE):
-            #             # 전술핵 생산 가능(자원이 충분)하면 전술핵 생산
-            #             actions.append(self.cc.train(UnitTypeId.NUKE))
-            #     if self.army_strategy is ArmyStrategy.OFFENSE:
-            #         if self.can_cast(unit, AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc) and unit.is_idle:
-            #             # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
-            #             actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
-            #             actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
-            #             actions.append(unit.attack(self.cc))
-                
-            #     elif self.army_strategy is ArmyStrategy.DEFENSE:
-            #         if self.can_cast(unit, AbilityId.EMP_EMP) and unit.is_idle:
-            #             emp_targets = self.known_enemy_units.filter(lambda unit: unit.name in ["Battlecruiser", "SiegeTank", "SiegeTankSieged", "Banshee", "Raven", "Medivac"])
-            #             if emp_targets:
-            #                 emp_target = emp_targets[0]
-            #                 actions.append(unit(AbilityId.EMP_EMP, target=emp_target))
-            #         actions.append(unit.attack(target))
-
-            # 밤까마귀 명령
-            if unit.type_id is UnitTypeId.RAVEN:
+            if unit.type_id is UnitTypeId.GHOST:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
-                    # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
-                    missile_targets = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
-                    if missile_targets:
-                        missile_target = missile_targets[0]
-                        # 전투순양함이 아군 사령부쪽에 있지 않을때 대장갑 미사일 이용하기
-                        if self.can_cast(unit, AbilityId.EFFECT_ANTIARMORMISSILE, target=missile_target):
-                            actions.append(unit(AbilityId.EFFECT_ANTIARMORMISSILE, target=missile_target))
+                    # ghost_abilities = self.get_available_abilities(unit)
+                    # if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
+                    if unit.is_idle:
+                    # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                        actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
+            
+            # 밤까마귀 명령
+            if unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.OFFENSE:
+                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
+                # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
+                if self.cc.distance_to(enemy_unit) <= 3:
+                    if self.enemy_cc==Point2(Point2((95.5, 31.5))):
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
                     else:
-                        # 전투순양함이 없는데 밤까마귀가 있는 경우 + 공격 모드일 때
-                        # 밤까마귀를 은신 유닛 탐지에 이용, 다른 아군 공격 유닛들과 함께 전투 유닛 중앙에 배치
-                        if self.combat_units.amount >= 15:
-                            actions.append(unit(AbilityId.SCAN_MOVE, target=self.combat_units.center))
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
                 
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    # 방해 매트릭스 이용하여 아군 사령부 쪽에서 유닛(특히 전투순양함) 방어
-                    matrix_targets = self.known_enemy_units.filter(lambda unit: unit.name in ["SiegeTank", "SiegeTankSieged", "VikingAssault", "VikingFigher", "Battlecruiser"])
-                    if matrix_targets:
-                        matrix_target = matrix_targets[0]
-                        if self.can_cast(unit, AbilityId.EFFECT_INTERFERENCEMATRIX, target=matrix_target.position):
-                            actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=matrix_target.position))
-                    else:
-                        # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 7 앞에서 방어공격
-                        # 아군 사령부 쪽에(거리 7 이하) 적 유닛 존재하면 자동 포탑 설치
-                        if self.enemy_cc==Point2(Point2((95.5, 31.5))):
-                            turret_target = Point2(Point2((38.5, 31.5)))
-                        else:
-                            turret_target = Point2(Point2((89.5, 31.5)))
-                        
-                        if self.cc.distance_to(target) < 7:
-                            if self.can_cast(unit, AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=turret_target):
-                                actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=turret_target))
+                # 방해 매트릭스 (은폐 유닛 드러냄)
+                try:
+                    if target.is_cloaked:
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
+                except:
+                    pass
 
             # 밴시 명령
-            if unit.type_id is UnitTypeId.BANSHEE: 
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
-                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    target =  self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
+            if unit.type_id is UnitTypeId.BANSHEE and self.army_strategy is ArmyStrategy.OFFENSE:
+                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
                 
                 actions.append(unit.attack(target))
             
             # 토르 명령
-            if unit.type_id is UnitTypeId.THOR:
+            if unit.type_id is UnitTypeId.THOR and self.army_strategy is ArmyStrategy.OFFENSE:
                 try:
                     if target.is_flying:
                         actions.append(unit(AbilityId.MORPH_THORHIGHIMPACTMODE))
-                except:
-                    pass
-
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
-                        actions.append(unit.attack(target))
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))
-            
-            if unit.type_id is UnitTypeId.THORAP:
-                try:
-                    if not target.is_flying:
+                    else:
                         actions.append(unit(AbilityId.MORPH_THOREXPLOSIVEMODE))
                 except:
                     pass
-
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
-                        actions.append(unit.attack(target))
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))
+                actions.append(unit.attack(target))
             
             # 바이킹 명령
-            if unit.type_id is UnitTypeId.VIKINGFIGHTER:
+            if unit.type_id is UnitTypeId.VIKINGFIGHTER and self.army_strategy is ArmyStrategy.OFFENSE:
                 try:
                     if not target.is_flying:
                         actions.append(unit(AbilityId.MORPH_VIKINGASSAULTMODE))
                 except:
                     pass
-                
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
-                        actions.append(unit.attack(target))
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))                    
+                actions.append(unit.attack(target))
             
-            if unit.type_id is UnitTypeId.VIKINGASSAULT:
+            if unit.type_id is UnitTypeId.VIKINGASSAULT and self.army_strategy is ArmyStrategy.OFFENSE:
                 try:
                     if target.is_flying:
                         actions.append(unit(AbilityId.MORPH_VIKINGFIGHTERMODE))
                 except:
                     pass
-
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:
-                        actions.append(unit.attack(target))
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))     
+                actions.append(unit.attack(target))
 
             # 지게로봇 명령
             if unit.type_id is UnitTypeId.MULE:
                 actions.append(unit(AbilityId.EFFECT_REPAIR_MULE, target=self.cc))
-        
+
+        # 사령부 체력이 깎였을 경우 지게로봇 생성
+        if self.cc.health_percentage < 1.0:
+            mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
+            actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+         
         return actions
     
 
