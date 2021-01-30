@@ -31,7 +31,8 @@ from sc2.player import Bot as _Bot
 from sc2.position import Point2
 from termcolor import colored, cprint
 
-from .consts import ArmyStrategy, CommandType, EconomyStrategy, EnemyEconomy
+from .consts import ArmyStrategy, CommandType, EconomyStrategy
+
 
 nest_asyncio.apply()
 
@@ -39,7 +40,7 @@ nest_asyncio.apply()
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(5 + 8 + 12, 64)
+        self.fc1 = nn.Linear(5 + 12, 64)
         self.norm1 = nn.LayerNorm(64)
         self.fc2 = nn.Linear(64, 64)
         self.norm2 = nn.LayerNorm(64)
@@ -82,6 +83,7 @@ class Bot(sc2.BotAI):
         self.step_interval = self.step_interval
         self.last_step_time = -self.step_interval
         self.evoked = dict()
+        # self.build_order = list()
 
         self.economy_strategy = EconomyStrategy.MARINE.value
         self.army_strategy = ArmyStrategy.DEFENSE
@@ -108,8 +110,11 @@ class Bot(sc2.BotAI):
             self.last_step_time = self.time
         
         self.combat_units = self.units.exclude_type(
-            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.MULE, UnitTypeId.NUKE]
+            [UnitTypeId.COMMANDCENTER, UnitTypeId.MEDIVAC, UnitTypeId.RAVEN, UnitTypeId.BATTLECRUISER, UnitTypeId.GHOST, UnitTypeId.MULE]
         )
+        self.wounded_units = self.units.filter(
+            lambda u: u.is_biological and u.health_percentage < 1.0
+        )  # 체력이 100% 이하인 유닛 검색
         
         actions += self.train_action()
         actions += self.unit_actions()
@@ -119,40 +124,19 @@ class Bot(sc2.BotAI):
         #
         # 특징 추출
         #
-        state = np.zeros(5 + len(EconomyStrategy) + len(EnemyEconomy), dtype=np.float32)
+        state = np.zeros(5 + len(EconomyStrategy), dtype=np.float32)
         state[0] = self.cc.health_percentage
         state[1] = min(1.0, self.minerals / 1000)
         state[2] = min(1.0, self.vespene / 1000)
         state[3] = min(1.0, self.time / 360)
         state[4] = min(1.0, self.state.score.total_damage_dealt_life / 2500)
-        # 아군 유닛 종류별 개수
         for unit in self.units.not_structure:
             id = unit.type_id
             if id is UnitTypeId.SIEGETANKSIEGED:
                 id = UnitTypeId.SIEGETANK
             if id is UnitTypeId.VIKINGASSAULT:
                 id = UnitTypeId.VIKINGFIGHTER
-            if id is UnitTypeId.THORAP:
-                id = UnitTypeId.THOR
-            if id in EconomyStrategy:
-               state[5 + EconomyStrategy.to_index[id]] += 1
-            else: 
-                continue
             state[5 + EconomyStrategy.to_index[id]] += 1
-        # 적 유닛 종류별 개수
-        if self.known_enemy_units.exists:
-            for enemy_unit in self.known_enemy_units.not_structure:
-                id = enemy_unit.type_id
-                if id is UnitTypeId.SIEGETANKSIEGED:
-                    id = UnitTypeId.SIEGETANK
-                if id is UnitTypeId.VIKINGASSAULT:
-                    id = UnitTypeId.VIKINGFIGHTER
-                if id is UnitTypeId.THORAP:
-                    id = UnitTypeId.THOR
-                if id in EnemyEconomy:
-                    state[5 + 8 + EnemyEconomy.to_index[id]] += 1
-                else: 
-                    continue
         state = state.reshape(1, -1)
 
         # NN
@@ -175,7 +159,6 @@ class Bot(sc2.BotAI):
 
         economy_strategy = EconomyStrategy.to_type_id[action // len(ArmyStrategy)]
         army_strategy = ArmyStrategy(action % len(ArmyStrategy))
-        print('next unit =', economy_strategy,'전략=', army_strategy)
         return economy_strategy, army_strategy
     
     def train_action(self):
@@ -184,20 +167,20 @@ class Bot(sc2.BotAI):
         #
         actions = list()
         next_unit = self.economy_strategy
-        if self.can_afford(next_unit):
-            if self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
+        cost = self._game_data.calculate_ability_cost(self.cc.train(next_unit))
+
+        if self.vespene >= cost.vespene:
+            # print('gas는 충분!')
+            if self.can_afford(next_unit) and self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
                 actions.append(self.cc.train(next_unit))
                 self.evoked[(self.cc.tag, 'train')] = self.time
-        
-        # 해병 정찰 명령
-        # 게임 시작시 바로 정찰병 생산
-        if not self.evoked.get((self.cc.tag, 'make_patrol'), 0):
-            actions.insert(0, self.cc.train(UnitTypeId.MARINE))
-            self.evoked[(self.cc.tag, 'make_patrol')] = self.time
-        # 15초 이전에 정찰병을 보낸 적이 없음
-        elif self.time - self.evoked.get((self.cc.tag, 'make_patrol'), 0) > 15.0:
-            actions.insert(0, self.cc.train(UnitTypeId.MARINE))
-            self.evoked[(self.cc.tag, 'make_patrol')] = self.time
+            # else:
+                # print('광물 부족')
+        else:
+            # print('gas 부족')
+            if self.can_afford(UnitTypeId.MARINE) and self.time - self.evoked.get((self.cc.tag, 'train'), 0) > 1.0:
+                actions.append(self.cc.train(UnitTypeId.MARINE))
+                self.evoked[(self.cc.tag, 'train')] = self.time
          
         return actions
         
@@ -207,11 +190,6 @@ class Bot(sc2.BotAI):
         # 유닛 명령 생성
         #
         actions = list()
-
-        # 사령부 체력이 깎였을 경우 지게로봇 생성
-        if self.cc.health_percentage < 1.0:
-            mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
-            actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
      
         for unit in self.units.not_structure:  # 건물이 아닌 유닛만 선택
             enemy_unit = self.enemy_start_locations[0]
@@ -224,125 +202,158 @@ class Bot(sc2.BotAI):
             else:
                 target = enemy_unit
 
-            if unit.type_id is not UnitTypeId.RAVEN:
+            # 해병 명령
+            if unit.type_id is UnitTypeId.MARINE:
+                use_stimpack = True
                 if self.army_strategy is ArmyStrategy.OFFENSE:
-                    actions.append(unit.attack(target))
-                else:
+                    if self.combat_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                        # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                        actions.append(unit.attack(target))
+                        use_stimpack = True
+                elif self.army_strategy is ArmyStrategy.DEFENSE:
+                    # 적 사령부 방향에 유닛 집결
                     target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))                
+                    actions.append(unit.attack(target))
+                    use_stimpack = False
 
-                # 해병 명령
-                if unit.type_id is UnitTypeId.MARINE:
-                    # 해병 정찰 명령
-                    # 15초 이전에 정찰병을 보낸 적이 없음
-                    if self.time - self.evoked.get((self.cc.tag, 'patrol'), 0) > 15.0 and self.time - self.evoked.get((unit.tag, 'patrol'), 0) > 15.0:
-                        actions.insert(0, unit.attack(self.enemy_cc.position))
-                        self.evoked[(self.cc.tag, 'patrol')] = self.time
-                        self.evoked[(unit.tag, 'patrol')] = self.time
-                    
-                    elif not self.evoked.get((unit.tag, 'patrol'), 0):
-                        if self.army_strategy is ArmyStrategy.OFFENSE and unit.distance_to(target) < 15:
-                            # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
-                            if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
-                                # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
-                                if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
-                                    # 1초 이전에 스팀팩을 사용한 적이 없음
-                                    actions.append(unit(AbilityId.EFFECT_STIM))
-                                    self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+                if self.army_strategy is ArmyStrategy.OFFENSE:
+                    if  use_stimpack and unit.distance_to(target) < 15:
+                        # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
+                        if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
+                            # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
+                            if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
+                                # 1초 이전에 스팀팩을 사용한 적이 없음
+                                actions.append(unit(AbilityId.EFFECT_STIM))
+                                self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+            
+            # 화염차 명령
+            if unit.type_id is UnitTypeId.HELLION:
+                if self.army_strategy is ArmyStrategy.OFFENSE:
+                    if self.combat_units.amount > 5:
+                        actions.append(unit.attack(target))
+                elif self.army_strategy is ArmyStrategy.DEFENSE:
+                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
 
-                # 공성 전차 명령
-                if unit.type_id is UnitTypeId.SIEGETANK:
-                    if self.army_strategy is ArmyStrategy.DEFENSE:
-                        # 적 사령부 방향에 유닛 집결
-                        defense_pos = self.start_location + 0.15 * (self.enemy_cc.position - self.start_location)
-                        actions.append(unit.attack(defense_pos))
+            # 공성 전차 명령
+            if unit.type_id is UnitTypeId.SIEGETANK: 
+                if self.army_strategy is ArmyStrategy.OFFENSE:
+                    if self.combat_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                        # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                        actions.append(unit.attack(target))
 
-                        # print('현재=', unit.position, '목표=', target, '거리=', unit.distance_to(target))
-                        if unit.distance_to(target) < 13:
-                            actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
-                        else:
-                            actions.append(unit.attack(target))
-                    
-                # Siege Mode 공성 전차 명령
-                if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
-                    if unit.distance_to(target) > 13:
-                        actions.append(unit(AbilityId.UNSIEGE_UNSIEGE))
+                elif self.army_strategy is ArmyStrategy.DEFENSE:
+                    # 적 사령부 방향에 유닛 집결
+                    target = self.start_location + 0.15 * (self.enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))
+
+                    # print('현재=', unit.position, '목표=', target, '거리=', unit.distance_to(target))
+                    if unit.distance_to(target) < 3.0:
+                        actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
                     else:
                         actions.append(unit.attack(target))
+                # 공성 모드로 전환 (사거리 증가 및 범위 공격)
+                # print('target=', target, 'distance=', unit.distance_to(target))
+
+                # 사거리 안에 들어오면 바로 공성 모드로 전환
+                # if 7 < unit.distance_to(target) < 13:
+                #     actions.append(unit(AbilityId.SIEGEMODE_SIEGEMODE))
+                # else:
+                #     actions.append(unit.attack(target))
                 
-                # 전투 순양함 명령
-                if unit.type_id is UnitTypeId.BATTLECRUISER:   
-                    battlecruiser_units = self.units(UnitTypeId.BATTLECRUISER)
+            # Siege Mode 공성 전차 명령
+            if unit.type_id is UnitTypeId.SIEGETANKSIEGED:
+                if unit.distance_to(target) > 13:
+                    actions.append(unit(AbilityId.UNSIEGE_UNSIEGE))
+                else:
+                    actions.append(unit.attack(target))
+            
+            # 전투 순양함 명령
+            if unit.type_id is UnitTypeId.BATTLECRUISER:       
+                # 전투순양함이 2개 이상일 때 적 사령부로 전술 차원 도약
+                if self.army_strategy is ArmyStrategy.OFFENSE:
                     if battlecruiser_units.amount >= 2:
                         if self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc):
-                            actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc))
+                          actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc))
                         # 야마토 포 시전 가능하면 시전
                         if self.can_cast(unit, AbilityId.YAMATO_YAMATOGUN, target=target):
                             actions.append(unit(AbilityId.YAMATO_YAMATOGUN, target=target))
-               
-                # 밴시 명령
-                if unit.type_id is UnitTypeId.BANSHEE: 
-                    if self.army_strategy is ArmyStrategy.OFFENSE:
-                        if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 20:
-                            actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))                       
-                        if unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) > 20:
-                            actions.append(unit(AbilityId.BEHAVIOR_CLOAKOFF_BANSHEE))   
-
+                        actions.append(unit.attack(target))
+                    else:
+                        defense_pos = self.start_location + 0.05 * (self.enemy_cc.position - self.start_location)
+                        actions.append(unit.attack(defense_pos))
                 
-                # 토르 명령
-                if unit.type_id is UnitTypeId.THOR:
-                    try:
-                        if target.is_flying:
-                            actions.append(unit(AbilityId.MORPH_THORHIGHIMPACTMODE))
-                    except:
-                        pass
-                
-                if unit.type_id is UnitTypeId.THORAP:
-                    try:
-                        if not target.is_flying:
-                            actions.append(unit(AbilityId.MORPH_THOREXPLOSIVEMODE))
-                    except:
-                        pass
-                
-                # 바이킹 명령
-                if unit.type_id is UnitTypeId.VIKINGFIGHTER:
-                    try:
-                        if not target.is_flying:
-                            actions.append(unit(AbilityId.MORPH_VIKINGASSAULTMODE))
-                    except:
-                        pass                  
-                
-                if unit.type_id is UnitTypeId.VIKINGASSAULT:
-                    try:
-                        if target.is_flying:
-                            actions.append(unit(AbilityId.MORPH_VIKINGFIGHTERMODE))
-                    except:
-                        pass                   
-
+            # 유령 명령
+            if unit.type_id is UnitTypeId.GHOST:
+                if self.army_strategy is ArmyStrategy.OFFENSE:
+                    # ghost_abilities = self.get_available_abilities(unit)
+                    # if AbilityId.TACNUKESTRIKE_NUKECALLDOWN in ghost_abilities and unit.is_idle:
+                    if unit.is_idle:
+                    # 전술핵 발사 가능(생산완료)하고 고스트가 idle 상태이면, 적 본진에 전술핵 발사
+                        actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_GHOST))
+                        actions.append(unit(AbilityId.TACNUKESTRIKE_NUKECALLDOWN, target=self.enemy_cc))
+            
             # 밤까마귀 명령
-            if unit.type_id is UnitTypeId.RAVEN:
-                if self.combat_units.exists:
-                    actions.append(unit.move(self.combat_units.center))
-                else:
-                    actions.append(unit.move(self.cc))
+            if unit.type_id is UnitTypeId.RAVEN and self.army_strategy is ArmyStrategy.OFFENSE:
+                # 자동 포탑 - 방어선으로 이용: 아군 사령부보다 거리 3 앞에서 방어공격
+                # 아군 사령부 쪽에(거리 3 이하) 적 유닛 존재하면 자동 포탑 설치
+                if self.cc.distance_to(enemy_unit) <= 3:
+                    if self.enemy_cc==Point2(Point2((95.5, 31.5))):
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((38.5, 31.5)))))
+                    else:
+                        actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=Point2(Point2((89.5, 31.5)))))
                 
-                # 대장갑 미사일 이용하여 상대 사령부 쪽으로 공격시 전투순양함 대상 공격
-                missile_targets = self.known_enemy_units.filter(lambda unit: unit.name == "Battlecruiser")
-                matrix_targets = self.known_enemy_units.filter(lambda unit: unit.name in ["SiegeTank", "SiegeTankSieged", "VikingAssault", "VikingFigher"])
-                if missile_targets:
-                    missile_target = missile_targets[0]
-                    # 전투순양함이 아군 사령부쪽에 있지 않을때 대장갑 미사일 이용하기
-                    actions.append(unit(AbilityId.EFFECT_ANTIARMORMISSILE, target=missile_target))
-                elif matrix_targets:
-                    matrix_target = matrix_targets[0]
-                    actions.append(unit(AbilityId.EFFECT_INTERFERENCEMATRIX, target=matrix_target.position))
-                else:
-                    actions.append(unit(AbilityId.BUILDAUTOTURRET_AUTOTURRET, target=unit.position))
+                # 방해 매트릭스 (은폐 유닛 드러냄)
+                try:
+                    if target.is_cloaked:
+                        actions.append(unit(AbilityId.SCAN_MOVE, target=target.position))
+                except:
+                    pass
+
+            # 밴시 명령
+            if unit.type_id is UnitTypeId.BANSHEE and self.army_strategy is ArmyStrategy.OFFENSE:
+                if not unit.has_buff(BuffId.BANSHEECLOAK) and unit.distance_to(target) < 10:
+                    actions.append(unit(AbilityId.BEHAVIOR_CLOAKON_BANSHEE))
+                
+                actions.append(unit.attack(target))
+            
+            # 토르 명령
+            if unit.type_id is UnitTypeId.THOR and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_THORHIGHIMPACTMODE))
+                    else:
+                        actions.append(unit(AbilityId.MORPH_THOREXPLOSIVEMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
+            
+            # 바이킹 명령
+            if unit.type_id is UnitTypeId.VIKINGFIGHTER and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if not target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_VIKINGASSAULTMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
+            
+            if unit.type_id is UnitTypeId.VIKINGASSAULT and self.army_strategy is ArmyStrategy.OFFENSE:
+                try:
+                    if target.is_flying:
+                        actions.append(unit(AbilityId.MORPH_VIKINGFIGHTERMODE))
+                except:
+                    pass
+                actions.append(unit.attack(target))
 
             # 지게로봇 명령
             if unit.type_id is UnitTypeId.MULE:
                 actions.append(unit(AbilityId.EFFECT_REPAIR_MULE, target=self.cc))
-        
+
+        # 사령부 체력이 깎였을 경우 지게로봇 생성
+        if self.cc.health_percentage < 1.0:
+            mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
+            actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+         
         return actions
     
 
