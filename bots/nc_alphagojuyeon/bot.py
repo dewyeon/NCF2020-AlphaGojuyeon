@@ -31,8 +31,7 @@ from sc2.player import Bot as _Bot
 from sc2.position import Point2
 from termcolor import colored, cprint
 
-from .consts import ArmyStrategy, CommandType, EconomyStrategy
-
+from .consts import ArmyStrategy, CommandType, EconomyStrategy, EnemyEconomy
 
 nest_asyncio.apply()
 
@@ -40,7 +39,7 @@ nest_asyncio.apply()
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(5 + 8, 64)
+        self.fc1 = nn.Linear(5 + 8 + 12, 64)
         self.norm1 = nn.LayerNorm(64)
         self.fc2 = nn.Linear(64, 64)
         self.norm2 = nn.LayerNorm(64)
@@ -123,12 +122,13 @@ class Bot(sc2.BotAI):
         #
         # 특징 추출
         #
-        state = np.zeros(5 + len(EconomyStrategy), dtype=np.float32)
+        state = np.zeros(5 + len(EconomyStrategy) + len(EnemyEconomy), dtype=np.float32)
         state[0] = self.cc.health_percentage
         state[1] = min(1.0, self.minerals / 1000)
         state[2] = min(1.0, self.vespene / 1000)
         state[3] = min(1.0, self.time / 360)
         state[4] = min(1.0, self.state.score.total_damage_dealt_life / 2500)
+        # 아군 유닛 종류별 개수
         for unit in self.units.not_structure:
             id = unit.type_id
             if id is UnitTypeId.SIEGETANKSIEGED:
@@ -142,6 +142,20 @@ class Bot(sc2.BotAI):
             # if id is UnitTypeId.NUKE:
             #     continue
             state[5 + EconomyStrategy.to_index[id]] += 1
+        # 적 유닛 종류별 개수
+        if self.known_enemy_units.exists:
+            for enemy_unit in self.known_enemy_units.not_structure:
+                id = enemy_unit.type_id
+                if id is UnitTypeId.SIEGETANKSIEGED:
+                    id = UnitTypeId.SIEGETANK
+                if id is UnitTypeId.VIKINGASSAULT:
+                    id = UnitTypeId.VIKINGFIGHTER
+                if id is UnitTypeId.THORAP:
+                    id = UnitTypeId.THOR
+                if id in EnemyEconomy:
+                    state[5 + 8 + EnemyEconomy.to_index[id]] += 1
+                else: 
+                    continue
         state = state.reshape(1, -1)
 
         # NN
@@ -182,6 +196,16 @@ class Bot(sc2.BotAI):
         if self.cc.health_percentage < 1.0:
             mule_loc = self.start_location - 0.05 * (self.enemy_cc.position - self.start_location)
             actions.append(self.cc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, target=mule_loc))
+
+        # 해병 정찰 명령
+        # 게임 시작시 바로 정찰병 생산
+        if not self.evoked.get((self.cc.tag, 'make_patrol'), 0):
+            actions.insert(0, self.cc.train(UnitTypeId.MARINE))
+            self.evoked[(self.cc.tag, 'make_patrol')] = self.time
+        # 15초 이전에 정찰병을 보낸 적이 없음
+        elif self.time - self.evoked.get((self.cc.tag, 'make_patrol'), 0) > 15.0:
+            actions.insert(0, self.cc.train(UnitTypeId.MARINE))
+            self.evoked[(self.cc.tag, 'make_patrol')] = self.time
          
         return actions
         
@@ -206,27 +230,37 @@ class Bot(sc2.BotAI):
             # 해병 명령
             if unit.type_id is UnitTypeId.MARINE:
                 use_stimpack = True
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if self.combat_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
-                        # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
-                        actions.append(unit.attack(target))
-                        use_stimpack = True
-                elif self.army_strategy is ArmyStrategy.DEFENSE:
-                    # 적 사령부 방향에 유닛 집결
-                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
-                    actions.append(unit.attack(target))
-                    use_stimpack = False
+                # 해병 정찰 명령
+                # 15초 이전에 정찰병을 보낸 적이 없음
+                if self.time - self.evoked.get((self.cc.tag, 'patrol'), 0) > 15.0 and self.time - self.evoked.get((unit.tag, 'patrol'), 0) > 15.0:
+                    actions.insert(0, unit.attack(self.enemy_cc.position))
+                    self.evoked[(self.cc.tag, 'patrol')] = self.time
+                    self.evoked[(unit.tag, 'patrol')] = self.time
+                
+                elif not self.evoked.get((unit.tag, 'patrol'), 0):
+                # 해병 공격 명령
+                    if self.army_strategy is ArmyStrategy.OFFENSE:
+                        if self.combat_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
+                            # 전투가능한 유닛 수가 15를 넘으면 적 본진으로 공격
+                            actions.append(unit.attack(target))
+                            use_stimpack = True
 
-                if self.army_strategy is ArmyStrategy.OFFENSE:
-                    if  use_stimpack and unit.distance_to(target) < 15:
-                        # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
-                        if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
-                            # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
-                            if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
-                                # 1초 이전에 스팀팩을 사용한 적이 없음
-                                actions.append(unit(AbilityId.EFFECT_STIM))
-                                self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
-            
+                    elif self.army_strategy is ArmyStrategy.DEFENSE:
+                        # 적 사령부 방향에 유닛 집결
+                        target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
+                        actions.append(unit.attack(target))
+                        use_stimpack = False
+
+                    if self.army_strategy is ArmyStrategy.OFFENSE:
+                        if  use_stimpack and unit.distance_to(target) < 15:
+                            # 유닛과 목표의 거리가 15이하일 경우 스팀팩 사용
+                            if not unit.has_buff(BuffId.STIMPACK) and unit.health_percentage > 0.5:
+                                # 현재 스팀팩 사용중이 아니며, 체력이 50% 이상
+                                if self.time - self.evoked.get((unit.tag, AbilityId.EFFECT_STIM), 0) > 1.0:
+                                    # 1초 이전에 스팀팩을 사용한 적이 없음
+                                    actions.append(unit(AbilityId.EFFECT_STIM))
+                                    self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
+        
             # 화염차 명령
             if unit.type_id is UnitTypeId.HELLION:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
@@ -264,8 +298,8 @@ class Bot(sc2.BotAI):
             # 전투 순양함 명령
             if unit.type_id is UnitTypeId.BATTLECRUISER:       
                 # 전투순양함이 2개 이상일 때 적 사령부로 전술 차원 도약
-                battlecruiser_units = self.units(UnitTypeId.BATTLECRUISER)
                 if self.army_strategy is ArmyStrategy.OFFENSE:
+                    battlecruiser_units = self.units(UnitTypeId.BATTLECRUISER)
                     if battlecruiser_units.amount >= 2:
                         if self.can_cast(unit, AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc):
                           actions.append(unit(AbilityId.EFFECT_TACTICALJUMP, target=self.enemy_cc))

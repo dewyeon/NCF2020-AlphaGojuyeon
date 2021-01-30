@@ -33,14 +33,33 @@ class EconomyStrategy(Enum):
     # NUKE = UnitTypeId.NUKE
     # MULE = UnitTypeId.MULE
 
+class EnemyEconomy(Enum):
+    MARINE = UnitTypeId.MARINE
+    MARAUDER = UnitTypeId.MARAUDER
+    REAPER = UnitTypeId.REAPER
+    GHOST = UnitTypeId.GHOST
+    HELLION = UnitTypeId.HELLION
+    SIEGETANK = UnitTypeId.SIEGETANK
+    THOR = UnitTypeId.THOR
+    MEDIVAC = UnitTypeId.MEDIVAC
+    VIKINGFIGHTER = UnitTypeId.VIKINGFIGHTER
+    BANSHEE = UnitTypeId.BANSHEE
+    RAVEN = UnitTypeId.RAVEN
+    BATTLECRUISER = UnitTypeId.BATTLECRUISER
 
 EconomyStrategy.to_index = dict()
 EconomyStrategy.to_type_id = dict()
+
+EnemyEconomy.to_index = dict()
+EnemyEconomy.to_type_id = dict()
 
 for idx, strategy in enumerate(EconomyStrategy):
     EconomyStrategy.to_index[strategy.value] = idx
     EconomyStrategy.to_type_id[idx] = strategy.value
 
+for idx, strategy in enumerate(EnemyEconomy):
+    EnemyEconomy.to_index[strategy.value] = idx
+    EnemyEconomy.to_type_id[idx] = strategy.value
 
 class ArmyStrategy(Enum):
     DEFENSE = 0
