@@ -190,6 +190,8 @@ class Bot(sc2.BotAI):
         # 유닛 명령 생성
         #
         actions = list()
+
+        self.cc = self.units(UnitTypeId.COMMANDCENTER).first  # 전체 유닛에서 사령부 검색
      
         for unit in self.units.not_structure:  # 건물이 아닌 유닛만 선택
             enemy_unit = self.enemy_start_locations[0]
@@ -203,7 +205,7 @@ class Bot(sc2.BotAI):
                 target = enemy_unit
 
             # 해병 명령
-            if unit.type_id is UnitTypeId.MARINE:
+            if unit.type_id in (UnitTypeId.MARINE, UnitTypeId.MARAUDER):
                 use_stimpack = True
                 if self.army_strategy is ArmyStrategy.OFFENSE:
                     if self.combat_units.amount >= 15:   # 나중에 다른 유닛 개수랑 더하는 것으로 수정하기
@@ -225,7 +227,14 @@ class Bot(sc2.BotAI):
                                 # 1초 이전에 스팀팩을 사용한 적이 없음
                                 actions.append(unit(AbilityId.EFFECT_STIM))
                                 self.evoked[(unit.tag, AbilityId.EFFECT_STIM)] = self.time
-            
+            # 사신 명령
+            if unit.type_id is UnitTypeId.REAPER:
+                if self.combat_units.amount > 15:
+                        actions.append(unit.attack(target))
+                else:
+                    target = self.start_location + 0.25 * (self.enemy_cc.position - self.start_location)
+                    actions.append(unit.attack(target))  
+                              
             # 화염차 명령
             if unit.type_id is UnitTypeId.HELLION:
                 if self.army_strategy is ArmyStrategy.OFFENSE:
